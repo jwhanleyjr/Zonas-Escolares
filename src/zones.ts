@@ -6,6 +6,8 @@ export type ZoneDefinition = {
   assignmentTitle: string;
   targetMinutes: number;
   linkUrl: string;
+  icon: string;
+  theme: string;
 };
 
 export type ZoneProgress = {
@@ -26,6 +28,8 @@ export const zoneDefinitions: ZoneDefinition[] = [
     assignmentTitle: 'Lee tu cuento de hoy',
     targetMinutes: 20,
     linkUrl: 'https://example.com/lectura',
+    icon: '📚',
+    theme: 'coral',
   },
   {
     id: 'mecanografia',
@@ -33,6 +37,8 @@ export const zoneDefinitions: ZoneDefinition[] = [
     assignmentTitle: 'Practica palabras nuevas',
     targetMinutes: 15,
     linkUrl: 'https://example.com/mecanografia',
+    icon: '⌨️',
+    theme: 'blue',
   },
   {
     id: 'matematicas',
@@ -40,6 +46,8 @@ export const zoneDefinitions: ZoneDefinition[] = [
     assignmentTitle: 'Resuelve problemas cortos',
     targetMinutes: 25,
     linkUrl: 'https://example.com/matematicas',
+    icon: '➕',
+    theme: 'purple',
   },
   {
     id: 'diverso-clases',
@@ -47,6 +55,8 @@ export const zoneDefinitions: ZoneDefinition[] = [
     assignmentTitle: 'Termina tu actividad especial',
     targetMinutes: 20,
     linkUrl: 'https://example.com/diverso-clases',
+    icon: '🎨',
+    theme: 'pink',
   },
   {
     id: 'ingles',
@@ -54,6 +64,8 @@ export const zoneDefinitions: ZoneDefinition[] = [
     assignmentTitle: 'Escucha y repite frases',
     targetMinutes: 15,
     linkUrl: 'https://example.com/ingles',
+    icon: '🌍',
+    theme: 'orange',
   },
   {
     id: 'ejercicio',
@@ -61,6 +73,8 @@ export const zoneDefinitions: ZoneDefinition[] = [
     assignmentTitle: 'Muévete con cuidado',
     targetMinutes: 10,
     linkUrl: 'https://example.com/ejercicio',
+    icon: '🏃',
+    theme: 'lime',
   },
 ];
 

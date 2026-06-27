@@ -26,9 +26,16 @@ function formatMinutes(seconds: number): string {
 }
 
 function getActionLabel(zone: ZoneProgress): string {
-  if (zone.status === 'En progreso') return 'Pausar';
-  if (zone.status === 'Terminada') return 'Revisar';
-  return 'Empezar';
+  if (zone.status === 'En progreso') return '⏸️ Pausar';
+  if (zone.status === 'Terminada') return '🔁 Revisar';
+  return '▶️ Empezar';
+}
+
+function getStatusLabel(zone: ZoneProgress): string {
+  if (zone.status === 'En progreso') return '🟢 En progreso';
+  if (zone.status === 'Pausada') return '⏸️ Pausada';
+  if (zone.status === 'Terminada') return '⭐ Terminada';
+  return '✨ No iniciada';
 }
 
 function updateState(nextState: ZoneState): void {
@@ -47,6 +54,18 @@ function handlePrimaryAction(zone: ZoneProgress): void {
   updateState(startZone(state, zone.id, now));
 }
 
+function getProgressPercent(displaySeconds: number, targetMinutes: number): number {
+  const targetSeconds = targetMinutes * 60;
+  if (targetSeconds <= 0) return 0;
+  return Math.min(100, Math.round((displaySeconds / targetSeconds) * 100));
+}
+
+function renderProgressStars(completed: number): string {
+  return zoneDefinitions
+    .map((_, index) => `<span class="star ${index < completed ? 'star--filled' : ''}" aria-hidden="true">★</span>`)
+    .join('');
+}
+
 function renderZoneCard(zone: ZoneProgress): string {
   const definition = zoneDefinitions.find((candidate) => candidate.id === zone.id);
   if (!definition) return '';
@@ -54,26 +73,35 @@ function renderZoneCard(zone: ZoneProgress): string {
   const displaySeconds = getDisplaySeconds(zone, currentTime);
   const isRunning = zone.status === 'En progreso';
   const isFinished = zone.status === 'Terminada';
+  const progressPercent = getProgressPercent(displaySeconds, definition.targetMinutes);
 
   return `
-    <article class="zone-card ${isRunning ? 'zone-card--active' : ''}" aria-label="Zona ${definition.name}">
+    <article class="zone-card zone-card--${definition.theme} ${isRunning ? 'zone-card--active' : ''} ${isFinished ? 'zone-card--finished' : ''}" aria-label="Zona ${definition.name}">
+      <div class="zone-card__stripe" aria-hidden="true"></div>
       <div class="zone-card__top">
-        <p class="zone-card__eyebrow">Zona</p>
-        <h2>${definition.name}</h2>
+        <span class="zone-icon" aria-hidden="true">${definition.icon}</span>
+        <div>
+          <h2>${definition.name}</h2>
+          <p class="assignment">${definition.assignmentTitle}</p>
+        </div>
       </div>
-      <p class="assignment">${definition.assignmentTitle}</p>
+      ${isRunning ? '<p class="active-badge">🔥 Estoy aquí</p>' : ''}
+      ${isFinished ? '<p class="confetti-badge" aria-label="Zona terminada">✨ ¡Buen trabajo! ✨</p>' : ''}
+      <div class="progress-ring" style="--progress: ${progressPercent}%" aria-label="${progressPercent}% del tiempo meta registrado">
+        <span>${progressPercent}%</span>
+      </div>
       <dl class="zone-details">
         <div>
-          <dt>Meta</dt>
+          <dt>🎯 Meta</dt>
           <dd>${definition.targetMinutes} min</dd>
         </div>
         <div>
-          <dt>Tiempo registrado</dt>
+          <dt>⏱️ Tiempo</dt>
           <dd>${formatMinutes(displaySeconds)}</dd>
         </div>
         <div>
           <dt>Estado</dt>
-          <dd><span class="status">${zone.status}</span></dd>
+          <dd><span class="status status--${zone.status.toLowerCase().replaceAll(' ', '-')}">${getStatusLabel(zone)}</span></dd>
         </div>
       </dl>
       <div class="zone-actions">
@@ -81,10 +109,10 @@ function renderZoneCard(zone: ZoneProgress): string {
           ${getActionLabel(zone)}
         </button>
         <button class="done-action" type="button" data-action="finish" data-zone-id="${zone.id}" ${isFinished ? 'disabled' : ''}>
-          Terminé
+          ✅ Terminé
         </button>
         <a class="assignment-link" href="${definition.linkUrl}" target="_blank" rel="noopener noreferrer">
-          Abrir tarea
+          📂 Abrir tarea
         </a>
       </div>
     </article>
@@ -99,13 +127,15 @@ function render(): void {
     <main class="page-shell">
       <section class="hero" aria-labelledby="page-title">
         <div>
-          <p class="hero__label">Elige tu orden</p>
-          <h1 id="page-title">Mis zonas de hoy</h1>
+          <p class="hero__label">👋 ¡Hola! Elige tu orden</p>
+          <h1 id="page-title">☀️ Mis zonas de hoy</h1>
           <p class="hero__text">Puedes empezar cualquier zona. Si empiezas otra, la zona activa se pausa sola.</p>
         </div>
-        <div class="progress-summary" aria-live="polite">
+        <div class="progress-summary" aria-live="polite" aria-label="${completed} de ${zoneDefinitions.length} zonas terminadas">
+          <span class="trophy" aria-hidden="true">🏆</span>
           <strong>${completed} de ${zoneDefinitions.length}</strong>
           <span>zonas terminadas</span>
+          <div class="star-road">${renderProgressStars(completed)}</div>
         </div>
       </section>
 
@@ -115,7 +145,7 @@ function render(): void {
 
       <section class="helper-panel" aria-label="Ayuda">
         <p>Tu tiempo es <strong>recorded work time</strong>. Tu maestra o maestro revisa si la tarea está completa.</p>
-        <button class="reset-button" type="button" data-action="reset">Borrar datos de desarrollo</button>
+        <button class="reset-button" type="button" data-action="reset">🧹 Borrar datos de desarrollo</button>
       </section>
     </main>
   `;
