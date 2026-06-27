@@ -26,6 +26,32 @@ a {
   -webkit-tap-highlight-color: transparent;
 }
 
+.top-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 1rem;
+}
+
+.auth-entry-link {
+  display: inline-grid;
+  min-height: 3.75rem;
+  place-items: center;
+  padding: 0 1.25rem;
+  border: 4px solid #ffffff;
+  border-radius: 999px;
+  color: #3b2b00;
+  background: #ffdf3f;
+  box-shadow: 0 0.35rem 0 #d69f00;
+  font-size: 1rem;
+  font-weight: 1000;
+  text-decoration: none;
+  touch-action: manipulation;
+}
+
+.auth-entry-link:active {
+  transform: translateY(0.1rem) scale(1.01);
+}
+
 .page-shell {
   width: min(1220px, 100%);
   margin: 0 auto;

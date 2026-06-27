@@ -30,7 +30,7 @@ The static login design is in `public/auth/login.html`. It has one primary butto
 
 ## Supabase schema and RLS
 
-Apply `supabase/migrations/20260627000000_google_auth_profiles_rls.sql` after reviewing it against the current remote database. The migration adds:
+Apply `supabase/migrations/20260627000000_google_auth_profiles_rls.sql` after reviewing it against the current remote database. A Vercel/static deployment will not create Supabase tables automatically; run `supabase link --project-ref YOUR-PROJECT-REF` and `npm run supabase:push` from a trusted machine or CI job with Supabase CLI credentials. The migration adds:
 
 - `profiles`, connected one-to-one to `auth.users`.
 - Roles: `admin`, `teacher`, and `student`.
