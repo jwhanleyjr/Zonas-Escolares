@@ -13,6 +13,30 @@
     {
       "source": "/zones",
       "destination": "/zones/index.html"
+    },
+    {
+      "source": "/teacher",
+      "destination": "/api/teacher"
+    },
+    {
+      "source": "/teacher/students",
+      "destination": "/api/teacher/students"
+    },
+    {
+      "source": "/teacher/students/:studentId",
+      "destination": "/api/teacher/students/:studentId"
+    },
+    {
+      "source": "/teacher/kami",
+      "destination": "/api/teacher/kami"
+    },
+    {
+      "source": "/teacher/progress",
+      "destination": "/api/teacher/progress"
+    },
+    {
+      "source": "/teacher/settings",
+      "destination": "/api/teacher/settings"
     }
   ]
 }

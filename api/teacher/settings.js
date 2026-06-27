@@ -1,0 +1,2 @@
+import { page, redirect, requireTeacher, sendHtml } from './_shared.js';
+export default async function handler(request, response) { const auth = await requireTeacher(request, response); if (auth.redirect) return redirect(response, auth.redirect); sendHtml(response, page('Configuración de zonas', auth.profile, '<section class="teacher-panel"><p>Próximamente: configuración detallada de zonas.</p><p><a href="/teacher">Volver al panel</a></p></section>')); }
