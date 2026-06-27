@@ -1,4 +1,4 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createBrowserClient } from 'https://esm.sh/@supabase/ssr@0.6.1';
 
 const config = window.ZONAS_SUPABASE_CONFIG;
 const button = document.querySelector('[data-auth-provider="google"]');
@@ -11,7 +11,7 @@ function showMessage(text) {
 
 function getSupabaseConfig() {
   if (!config?.url || !config?.anonKey) {
-    throw new Error('Faltan NEXT_PUBLIC_SUPABASE_URL y NEXT_PUBLIC_SUPABASE_ANON_KEY.');
+    throw new Error('Faltan las variables públicas de Supabase en Vercel.');
   }
 
   return config;
@@ -25,13 +25,7 @@ button?.addEventListener('click', async () => {
 
   try {
     const { url, anonKey } = getSupabaseConfig();
-    const supabase = createClient(url, anonKey, {
-      auth: {
-        flowType: 'pkce',
-        persistSession: true,
-        detectSessionInUrl: false,
-      },
-    });
+    const supabase = createBrowserClient(url, anonKey);
 
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',

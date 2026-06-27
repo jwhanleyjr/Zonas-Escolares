@@ -32,7 +32,7 @@ Unknown Google users are represented by a `profiles` row created from `auth.user
 
 ## Login and pending pages
 
-The static login design is in `public/auth/login.html`. It has one primary button labeled `Continuar con Google` and a brief Spanish explanation for students. `public/auth/login.js` creates a Supabase browser client with PKCE and calls `supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: `${window.location.origin}/auth/callback`, scopes: 'openid email profile' } })`. The pending design is in `public/auth/access-pending.html`.
+The static login design is in `public/auth/login.html`. It has one primary button labeled `Continuar con Google` and a brief Spanish explanation for students. `public/auth/login.js` creates a Supabase SSR browser client with PKCE cookie support and calls `supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: `${window.location.origin}/auth/callback`, scopes: 'openid email profile' } })`. The pending design is in `public/auth/access-pending.html`.
 
 ## Supabase schema and RLS
 
@@ -82,7 +82,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=YOUR_SUPABASE_ANON_KEY
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
 ```
 
-Production should set equivalent values with the production site URL. The static build writes `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` into `dist/auth/supabase-config.js` for the browser login client. Never put the Supabase service-role key in browser code or `NEXT_PUBLIC_*` variables. If a service-role key is needed for one-time administration, use it only from a trusted server or local secure administrative script.
+Production should set equivalent values with the production site URL. The static build writes the Supabase public URL/key into `dist/auth/supabase-config.js` for the browser login client. Preferred Vercel variables are `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`; the build also accepts `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_URL`, `SUPABASE_ANON_KEY`, and `SUPABASE_PUBLISHABLE_KEY`. Never put the Supabase service-role key in browser code or `NEXT_PUBLIC_*` variables. If a service-role key is needed for one-time administration, use it only from a trusted server or local secure administrative script.
 
 ## Creating the first administrator safely
 
