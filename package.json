@@ -8,12 +8,16 @@
     "build": "rm -rf dist && tsc -p tsconfig.json && node scripts/build.mjs",
     "lint": "node scripts/lint.mjs",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "test": "tsc -p tsconfig.test.json && node dist-test/zoneState.test.js"
+    "test": "tsc -p tsconfig.test.json && node dist-test/zoneState.test.js",
+    "supabase:push": "supabase db push"
   },
   "engines": {
     "node": ">=20"
   },
   "devDependencies": {
     "typescript": "^6.0.3"
+  },
+  "dependencies": {
+    "@supabase/ssr": "^0.6.1"
   }
 }

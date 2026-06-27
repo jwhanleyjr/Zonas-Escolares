@@ -1,4 +1,18 @@
 {
   "buildCommand": "npm run build",
-  "outputDirectory": "dist"
+  "outputDirectory": "dist",
+  "rewrites": [
+    {
+      "source": "/auth/callback",
+      "destination": "/api/auth/callback"
+    },
+    {
+      "source": "/auth/access-pending",
+      "destination": "/auth/access-pending.html"
+    },
+    {
+      "source": "/zones",
+      "destination": "/zones/index.html"
+    }
+  ]
 }

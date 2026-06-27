@@ -125,6 +125,10 @@ function render(): void {
 
   app.innerHTML = `
     <main class="page-shell">
+      <nav class="top-actions" aria-label="Acceso">
+        <a class="auth-entry-link" href="/auth/login.html">Continuar con Google</a>
+      </nav>
+
       <section class="hero" aria-labelledby="page-title">
         <div>
           <p class="hero__label">👋 ¡Hola! Elige tu orden</p>
