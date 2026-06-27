@@ -2,9 +2,9 @@
 
 This project uses Supabase Auth as the only Google OAuth integration. Do not request Google Classroom scopes until a separate Classroom integration is designed and approved.
 
-## Next.js SSR route design
+## Server-side OAuth callback design
 
-Use the current Supabase SSR package for Next.js (`@supabase/ssr`) with server-side cookie handling. The browser starts OAuth with Google and requests only basic identity scopes:
+Use the current Supabase SSR package (`@supabase/ssr`) with server-side cookie handling. The browser starts OAuth with Google and requests only basic identity scopes:
 
 ```ts
 await supabase.auth.signInWithOAuth({
@@ -16,7 +16,7 @@ await supabase.auth.signInWithOAuth({
 });
 ```
 
-The callback route example in `app/auth/callback/route.ts` must run on the server. It should read `code` from the callback URL, call `exchangeCodeForSession(code)`, then load the authenticated profile and roster state before redirecting:
+The deployed callback route is `api/auth/callback.js`, exposed at `/auth/callback` by the Vercel rewrite in `vercel.json`, and must run on the server. It should read `code` from the callback URL, call `exchangeCodeForSession(code)`, then load the authenticated profile and roster state before redirecting:
 
 - `admin` or `teacher` profiles redirect to the teacher dashboard.
 - `student` profiles redirect to the student zone board only when `students.profile_id` is already linked to the authenticated Supabase Auth user.
@@ -68,7 +68,7 @@ Only basic identity scopes are needed now: `openid`, `email`, and `profile`.
 2. Enable Google.
 3. Paste the Google OAuth client ID and client secret.
 4. In Authentication → URL Configuration, add redirect URLs:
-   - `http://localhost:3000/auth/callback`
+   - `http://localhost:3000/auth/callback` when running through `vercel dev` or another server that serves the callback function
    - `https://YOUR-PRODUCTION-DOMAIN/auth/callback`
 5. Keep Google Classroom API permissions disabled and unrequested.
 
