@@ -529,7 +529,8 @@ a:focus-visible {
 }
 
 .auth-card__text,
-.auth-card__note {
+.auth-card__note,
+.auth-card__status {
   color: #513f7c;
   font-weight: 850;
   line-height: 1.45;
@@ -539,8 +540,13 @@ a:focus-visible {
   font-size: clamp(1.2rem, 2.5vw, 1.45rem);
 }
 
-.auth-card__note {
+.auth-card__note,
+.auth-card__status {
   font-size: 1rem;
+}
+
+.auth-card__status:empty {
+  display: none;
 }
 
 .google-button {
@@ -556,6 +562,11 @@ a:focus-visible {
   font-size: 1.15rem;
   font-weight: 1000;
   touch-action: manipulation;
+}
+
+.google-button:disabled {
+  cursor: wait;
+  opacity: 0.72;
 }
 
 .google-button:active {

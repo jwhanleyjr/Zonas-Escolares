@@ -16,7 +16,10 @@
         </p>
         <button class="google-button" type="button" data-auth-provider="google">Continuar con Google</button>
         <p class="auth-card__note">Solo pedimos tu identidad básica de Google. No usamos permisos de Google Classroom.</p>
+        <p class="auth-card__status" data-auth-message role="status" aria-live="polite"></p>
       </section>
     </main>
+    <script src="/auth/supabase-config.js"></script>
+    <script type="module" src="/auth/login.js"></script>
   </body>
 </html>
