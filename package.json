@@ -1,0 +1,13 @@
+{
+  "name": "zonas-escolares",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "npm run build && node scripts/dev-server.mjs dist",
+    "build": "rm -rf dist && tsc -p tsconfig.json && node scripts/build.mjs",
+    "lint": "node scripts/lint.mjs",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "tsc -p tsconfig.test.json && node dist-test/zoneState.test.js"
+  }
+}
