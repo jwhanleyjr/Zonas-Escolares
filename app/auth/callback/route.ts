@@ -44,7 +44,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('id, email, role, active')
+    .select('id, role, active')
     .eq('id', user.id)
     .maybeSingle();
 
