@@ -2,6 +2,8 @@
 -- Requires Supabase Auth with Google enabled separately in the Supabase dashboard.
 
 create type public.app_role as enum ('admin', 'teacher', 'student');
+create type public.learning_platform as enum ('raz_espanol', 'typingclub', 'ixl', 'ellii');
+create type public.work_zone as enum ('lectura', 'mecanografia', 'matematicas', 'clases_diversas', 'ingles', 'ejercicio');
 
 create table public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
@@ -45,34 +47,51 @@ create trigger students_set_updated_at
 before update on public.students
 for each row execute function public.set_updated_at();
 
-create table if not exists public.platform_links (
+create table public.student_platform_links (
   id uuid primary key default gen_random_uuid(),
-  title text not null,
+  student_id uuid not null references public.students(id) on delete cascade,
+  platform public.learning_platform not null,
   url text not null,
-  active boolean not null default true,
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (student_id, platform)
 );
 
-create table if not exists public.assignments (
+create trigger student_platform_links_set_updated_at
+before update on public.student_platform_links
+for each row execute function public.set_updated_at();
+
+create table public.kami_assignments (
   id uuid primary key default gen_random_uuid(),
   student_id uuid not null references public.students(id) on delete cascade,
-  platform_link_id uuid references public.platform_links(id) on delete set null,
+  assignment_date date not null,
   title text not null,
-  due_date date,
-  created_at timestamptz not null default now()
-);
-
-create table if not exists public.progress (
-  id uuid primary key default gen_random_uuid(),
-  student_id uuid not null references public.students(id) on delete cascade,
-  assignment_id uuid references public.assignments(id) on delete cascade,
-  recorded_work_seconds integer not null default 0 check (recorded_work_seconds >= 0),
-  status text not null default 'not_started',
+  instructions text,
+  url text not null,
+  status text not null default 'assigned',
+  created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
 
-create trigger progress_set_updated_at
-before update on public.progress
+create trigger kami_assignments_set_updated_at
+before update on public.kami_assignments
+for each row execute function public.set_updated_at();
+
+create table public.zone_progress (
+  id uuid primary key default gen_random_uuid(),
+  student_id uuid not null references public.students(id) on delete cascade,
+  work_date date not null,
+  zone public.work_zone not null,
+  recorded_seconds integer not null default 0 check (recorded_seconds >= 0),
+  status text not null default 'not_started',
+  teacher_confirmed boolean not null default false,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (student_id, work_date, zone)
+);
+
+create trigger zone_progress_set_updated_at
+before update on public.zone_progress
 for each row execute function public.set_updated_at();
 
 create or replace function public.current_profile_role()
@@ -152,14 +171,14 @@ for each row execute function public.handle_new_auth_user();
 
 alter table public.profiles enable row level security;
 alter table public.students enable row level security;
-alter table public.platform_links enable row level security;
-alter table public.assignments enable row level security;
-alter table public.progress enable row level security;
+alter table public.student_platform_links enable row level security;
+alter table public.kami_assignments enable row level security;
+alter table public.zone_progress enable row level security;
 
 create policy "profiles_select_own_or_staff" on public.profiles
 for select using (id = auth.uid() or public.current_profile_role() in ('admin', 'teacher'));
 
-create policy "profiles_update_self_safe_fields" on public.profiles
+create policy "profiles_update_self_without_role_change" on public.profiles
 for update using (id = auth.uid())
 with check (id = auth.uid() and role = (select role from public.profiles where id = auth.uid()));
 
@@ -174,27 +193,27 @@ create policy "students_staff_manage" on public.students
 for all using (public.current_profile_role() in ('admin', 'teacher'))
 with check (public.current_profile_role() in ('admin', 'teacher'));
 
-create policy "platform_links_students_read_active" on public.platform_links
-for select using (active = true and public.current_student_id() is not null);
+create policy "student_platform_links_select_own_or_staff" on public.student_platform_links
+for select using (student_id = public.current_student_id() or public.current_profile_role() in ('admin', 'teacher'));
 
-create policy "platform_links_staff_manage" on public.platform_links
+create policy "student_platform_links_staff_manage" on public.student_platform_links
 for all using (public.current_profile_role() in ('admin', 'teacher'))
 with check (public.current_profile_role() in ('admin', 'teacher'));
 
-create policy "assignments_select_own_or_staff" on public.assignments
+create policy "kami_assignments_select_own_or_staff" on public.kami_assignments
 for select using (student_id = public.current_student_id() or public.current_profile_role() in ('admin', 'teacher'));
 
-create policy "assignments_staff_manage" on public.assignments
+create policy "kami_assignments_staff_manage" on public.kami_assignments
 for all using (public.current_profile_role() in ('admin', 'teacher'))
 with check (public.current_profile_role() in ('admin', 'teacher'));
 
-create policy "progress_select_own_or_staff" on public.progress
+create policy "zone_progress_select_own_or_staff" on public.zone_progress
 for select using (student_id = public.current_student_id() or public.current_profile_role() in ('admin', 'teacher'));
 
-create policy "progress_students_update_own" on public.progress
+create policy "zone_progress_students_update_own_unconfirmed" on public.zone_progress
 for update using (student_id = public.current_student_id())
-with check (student_id = public.current_student_id());
+with check (student_id = public.current_student_id() and teacher_confirmed = false);
 
-create policy "progress_staff_manage" on public.progress
+create policy "zone_progress_staff_manage" on public.zone_progress
 for all using (public.current_profile_role() in ('admin', 'teacher'))
 with check (public.current_profile_role() in ('admin', 'teacher'));

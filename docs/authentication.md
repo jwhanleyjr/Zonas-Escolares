@@ -35,7 +35,7 @@ Apply `supabase/migrations/20260627000000_google_auth_profiles_rls.sql` after re
 - `profiles`, connected one-to-one to `auth.users`.
 - Roles: `admin`, `teacher`, and `student`.
 - `students.profile_id` and `students.approved_google_email`.
-- RLS helpers and policies for profiles, students, platform links, assignments, and recorded progress.
+- RLS helpers and policies for profiles, students, student platform links, Kami assignments, and zone progress.
 
 Student access is roster-based. A Google account is allowed into the student portal only if an active student record has the same approved Google email or is already linked to that profile.
 
@@ -88,3 +88,13 @@ where id = 'KNOWN-AUTH-USER-UUID';
 
 4. Do not promote users based only on an email domain.
 5. Remove any temporary administrative script or service-role environment variable after use.
+
+## Migration revision notes
+
+This migration intentionally keeps the Google Auth and roster-linking foundation, but changes the school-work tables to match the current workflow:
+
+- `platform_links` was replaced by `student_platform_links`, scoped to one student and one approved platform (`raz_espanol`, `typingclub`, `ixl`, or `ellii`) with a unique `student_id` plus `platform` constraint.
+- `assignments` was replaced by `kami_assignments`, scoped to each student and assignment date with teacher-controlled title, instructions, URL, and status fields.
+- `progress` was replaced by `zone_progress`, keyed by student, work date, and zone (`lectura`, `mecanografia`, `matematicas`, `clases_diversas`, `ingles`, or `ejercicio`) and storing recorded work seconds plus teacher confirmation.
+- RLS is enabled on every table. Students can read only their own records, teachers and admins can manage all student records, and students can update only their own unconfirmed `zone_progress` rows.
+- No public policies are created.
