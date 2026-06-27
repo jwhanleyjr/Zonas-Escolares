@@ -572,3 +572,153 @@ a:focus-visible {
 .google-button:active {
   transform: translateY(0.1rem) scale(1.01);
 }
+
+.teacher-shell {
+  width: min(1180px, 100%);
+  margin: 0 auto;
+  padding: clamp(1rem, 3vw, 2rem);
+}
+
+.teacher-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+  padding: 1rem;
+  border: 4px solid #fff;
+  border-radius: 1.5rem;
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.teacher-nav div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.teacher-nav__home,
+.teacher-nav__link,
+.teacher-button {
+  display: inline-grid;
+  min-height: 3rem;
+  place-items: center;
+  padding: 0.65rem 1rem;
+  border: 3px solid #fff;
+  border-radius: 999px;
+  color: #2b2157;
+  background: #ffdf3f;
+  box-shadow: 0 0.25rem 0 #d69f00;
+  font-weight: 1000;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.teacher-button--secondary {
+  background: #e8f4fd;
+  box-shadow: 0 0.25rem 0 #9fc9e8;
+}
+
+.teacher-header,
+.teacher-panel,
+.summary-card,
+.teacher-card {
+  padding: 1.25rem;
+  border: 4px solid #fff;
+  border-radius: 1.5rem;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 0.55rem 0 rgba(155, 93, 229, 0.18);
+}
+
+.teacher-header {
+  margin-bottom: 1rem;
+}
+
+.summary-grid,
+.teacher-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.summary-card strong {
+  display: block;
+  margin-top: 0.5rem;
+  font-size: 2.5rem;
+}
+
+.teacher-card {
+  display: grid;
+  min-height: 9rem;
+  align-content: center;
+  color: #2b2157;
+  text-decoration: none;
+}
+
+.teacher-card strong {
+  font-size: 1.5rem;
+}
+
+.teacher-form,
+.platform-row {
+  display: grid;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.teacher-form input,
+.teacher-form select,
+.teacher-form textarea,
+.platform-row input {
+  width: 100%;
+  min-height: 3rem;
+  margin-top: 0.25rem;
+  padding: 0.6rem;
+  border: 3px solid #d8cdf4;
+  border-radius: 0.9rem;
+  font: inherit;
+}
+
+.checkbox-row {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+}
+
+.checkbox-row input {
+  width: 1.5rem;
+  min-height: 1.5rem;
+}
+
+.teacher-table {
+  width: 100%;
+  border-collapse: collapse;
+  overflow: hidden;
+  border-radius: 1rem;
+}
+
+.teacher-table th,
+.teacher-table td {
+  padding: 0.8rem;
+  border-bottom: 2px solid #efe8ff;
+  text-align: left;
+  vertical-align: top;
+}
+
+.teacher-error {
+  padding: 1rem;
+  border-radius: 1rem;
+  color: #5c1d1d;
+  background: #ffe2e2;
+  font-weight: 900;
+}
+
+.teacher-status {
+  padding: 1rem;
+  border-radius: 1rem;
+  color: #194221;
+  background: #ddffd6;
+  font-weight: 900;
+}
