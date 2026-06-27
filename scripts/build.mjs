@@ -11,7 +11,9 @@ const supabaseAnonKey =
   '';
 
 await mkdir('dist/assets', { recursive: true });
-await cp('public/index.html', 'dist/index.html');
+await mkdir('dist/zones', { recursive: true });
+await cp('public/auth/login.html', 'dist/index.html');
+await cp('public/index.html', 'dist/zones/index.html');
 await cp('public/auth', 'dist/auth', { recursive: true });
 await writeFile(
   'dist/auth/supabase-config.js',

@@ -1,7 +1,7 @@
 import { createServerClient } from '@supabase/ssr';
 
 const teacherDashboardPath = '/teacher';
-const studentBoardPath = '/';
+const studentBoardPath = '/zones';
 const accessPendingPath = '/auth/access-pending';
 
 function getRequestUrl(request) {

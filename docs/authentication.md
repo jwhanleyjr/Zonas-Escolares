@@ -19,7 +19,7 @@ await supabase.auth.signInWithOAuth({
 The deployed callback route is `api/auth/callback.js`, exposed at `/auth/callback` by the Vercel rewrite in `vercel.json`, and must run on the server. It should read `code` from the callback URL, call `exchangeCodeForSession(code)`, then load the authenticated profile and roster state before redirecting:
 
 - `admin` or `teacher` profiles redirect to the teacher dashboard.
-- `student` profiles redirect to the student zone board only when `students.profile_id` is already linked to the authenticated Supabase Auth user.
+- `student` profiles redirect to `/zones`, the student zone board, only when `students.profile_id` is already linked to the authenticated Supabase Auth user.
 - Unknown or inactive accounts redirect to `/auth/access-pending`.
 
 Do not decide teacher access from a Google email domain. Promote teachers and administrators only from trusted administrator updates.
@@ -32,7 +32,7 @@ Unknown Google users are represented by a `profiles` row created from `auth.user
 
 ## Login and pending pages
 
-The static login design is in `public/auth/login.html`. It has one primary button labeled `Continuar con Google` and a brief Spanish explanation for students. `public/auth/login.js` creates a Supabase SSR browser client with PKCE cookie support and calls `supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: `${window.location.origin}/auth/callback`, scopes: 'openid email profile' } })`. The pending design is in `public/auth/access-pending.html`.
+The static login design is in `public/auth/login.html`; the production build also publishes it as the site root (`/`) so login is the first page. It has one primary button labeled `Continuar con Google` and a brief Spanish explanation for students. `public/auth/login.js` creates a Supabase SSR browser client with PKCE cookie support and calls `supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: `${window.location.origin}/auth/callback`, scopes: 'openid email profile' } })`. The pending design is in `public/auth/access-pending.html`.
 
 ## Supabase schema and RLS
 

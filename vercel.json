@@ -9,6 +9,10 @@
     {
       "source": "/auth/access-pending",
       "destination": "/auth/access-pending.html"
+    },
+    {
+      "source": "/zones",
+      "destination": "/zones/index.html"
     }
   ]
 }
