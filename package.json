@@ -9,5 +9,11 @@
     "lint": "node scripts/lint.mjs",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "tsc -p tsconfig.test.json && node dist-test/zoneState.test.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "typescript": "^6.0.3"
   }
 }

@@ -43,14 +43,14 @@ export const zoneDefinitions: ZoneDefinition[] = [
   },
   {
     id: 'diverso-clases',
-    name: 'Diverso Clases',
+    name: 'Clases Diversas',
     assignmentTitle: 'Termina tu actividad especial',
     targetMinutes: 20,
     linkUrl: 'https://example.com/diverso-clases',
   },
   {
     id: 'ingles',
-    name: 'Ingles',
+    name: 'Inglés',
     assignmentTitle: 'Escucha y repite frases',
     targetMinutes: 15,
     linkUrl: 'https://example.com/ingles',
