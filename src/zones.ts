@@ -17,6 +17,7 @@ export type StudentZoneSetting = {
   zone: string;
   target_minutes: number | null;
   completion_mode: CompletionMode;
+  link_url?: string | null;
 };
 
 export type ZoneProgress = {
@@ -108,6 +109,7 @@ export function applyZoneSettings(definitions: ZoneDefinition[], settings: Stude
       ...definition,
       targetMinutes: setting.target_minutes,
       completionMode: setting.completion_mode,
+      linkUrl: setting.link_url ?? definition.linkUrl,
     };
   });
 }

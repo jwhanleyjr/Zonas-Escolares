@@ -61,6 +61,7 @@ create table public.student_zone_settings (
   zone public.work_zone not null,
   target_minutes integer check (target_minutes is null or target_minutes > 0),
   completion_mode public.zone_completion_mode not null,
+  link_url text check (link_url is null or link_url ~* '^https?://'),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   unique (student_id, zone)
