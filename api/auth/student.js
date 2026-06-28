@@ -1,19 +1,37 @@
-import { createSupabaseClient } from '../teacher/_shared.js';
+import { createSupabaseClient, platformByZone } from '../teacher/_shared.js';
 
 function sendJson(response, statusCode, body) {
   response.writeHead(statusCode, { 'content-type': 'application/json; charset=utf-8' });
   response.end(JSON.stringify(body));
 }
 
-async function sendStudentProfile(response, supabase, student) {
-  const { data: zoneSettings, error } = await supabase
-    .from('student_zone_settings')
-    .select('zone, target_minutes, completion_mode, link_url')
-    .eq('student_id', student.id)
-    .order('zone');
+export function applyPlatformFallbackLinks(zoneSettings, platformLinks) {
+  const linkByPlatform = new Map((platformLinks ?? []).map((link) => [link.platform, link.url]));
 
-  if (error) console.error(error);
-  sendJson(response, 200, { studentId: student.id, displayName: student.display_name, zoneSettings: zoneSettings ?? [] });
+  return (zoneSettings ?? []).map((setting) => {
+    if (setting.link_url) return setting;
+    const platform = platformByZone[setting.zone];
+    const platformUrl = platform ? linkByPlatform.get(platform) : null;
+    return { ...setting, link_url: platformUrl ?? setting.link_url };
+  });
+}
+
+async function sendStudentProfile(response, supabase, student) {
+  const [{ data: zoneSettings, error: settingsError }, { data: platformLinks, error: linksError }] = await Promise.all([
+    supabase
+      .from('student_zone_settings')
+      .select('zone, target_minutes, completion_mode, link_url')
+      .eq('student_id', student.id)
+      .order('zone'),
+    supabase
+      .from('student_platform_links')
+      .select('platform, url')
+      .eq('student_id', student.id),
+  ]);
+
+  if (settingsError) console.error(settingsError);
+  if (linksError) console.error(linksError);
+  sendJson(response, 200, { studentId: student.id, displayName: student.display_name, zoneSettings: applyPlatformFallbackLinks(zoneSettings, platformLinks) });
 }
 
 export default async function handler(request, response) {

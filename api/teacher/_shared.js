@@ -11,6 +11,15 @@ export const platforms = [
   ['ellii', 'Ellii'],
 ];
 
+export const platformLabels = Object.fromEntries(platforms);
+
+export const platformByZone = {
+  lectura: 'raz_espanol',
+  mecanografia: 'typingclub',
+  matematicas: 'ixl',
+  ingles: 'ellii',
+};
+
 export function getSchoolDate(now = new Date()) {
   return new Intl.DateTimeFormat('en-CA', { timeZone: schoolTimeZone }).format(now);
 }

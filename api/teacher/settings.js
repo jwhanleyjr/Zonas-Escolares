@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import { escapeHtml, page, readForm, redirect, requireTeacher, sendHtml, validateUrl } from './_shared.js';
+import { escapeHtml, page, platformByZone, platformLabels, readForm, redirect, requireTeacher, sendHtml, validateUrl } from './_shared.js';
 
 export const zones = [
   ['lectura', 'Lectura'],
@@ -119,10 +119,12 @@ function renderForm(students, selectedStudentId, settings, message) {
     const minutes = saved.target_minutes ?? '';
     const mode = saved.completion_mode ?? defaultSettings[zone].completion_mode;
     const linkUrl = saved.link_url ?? '';
-    return `<div class="teacher-setting-row"><strong>${escapeHtml(label)}</strong><label>Minutos meta<input name="${escapeHtml(fieldName(selectedStudent.id, zone, 'target_minutes'))}" inputmode="numeric" pattern="[0-9]*" value="${escapeHtml(minutes)}" placeholder="Vacío"></label><label>Modo<select name="${escapeHtml(fieldName(selectedStudent.id, zone, 'completion_mode'))}">${renderModeOptions(mode)}</select></label><label>Enlace de tarea<input name="${escapeHtml(fieldName(selectedStudent.id, zone, 'link_url'))}" type="url" value="${escapeHtml(linkUrl)}" placeholder="https://..."></label></div>`;
+    const platform = platformByZone[zone];
+    const fallbackText = platform ? `Déjalo vacío para usar el enlace de plataforma: ${platformLabels[platform] ?? platform}.` : 'Esta zona no tiene plataforma predeterminada; agrega un enlace solo si hace falta.';
+    return `<div class="teacher-setting-row"><strong>${escapeHtml(label)}</strong><label>Minutos meta<input name="${escapeHtml(fieldName(selectedStudent.id, zone, 'target_minutes'))}" inputmode="numeric" pattern="[0-9]*" value="${escapeHtml(minutes)}" placeholder="Vacío"></label><label>Modo<select name="${escapeHtml(fieldName(selectedStudent.id, zone, 'completion_mode'))}">${renderModeOptions(mode)}</select></label><label>Enlace de tarea<input name="${escapeHtml(fieldName(selectedStudent.id, zone, 'link_url'))}" type="url" value="${escapeHtml(linkUrl)}" placeholder="Usar enlace de plataforma"><small>${escapeHtml(fallbackText)}</small></label></div>`;
   }).join('');
 
-  return `<section class="teacher-panel"><form class="teacher-form" method="get"><label>Estudiante<select name="student_id" onchange="this.form.submit()">${renderStudentOptions(students, selectedStudent.id)}</select></label><noscript><button class="teacher-button teacher-button--secondary" type="submit">Ver estudiante</button></noscript></form></section><form class="teacher-form" method="post"><input type="hidden" name="selected_student_id" value="${escapeHtml(selectedStudent.id)}">${renderMessage(message)}<p>Escribe minutos positivos o deja el espacio vacío. Elige cómo se completa cada zona y, si hace falta, agrega un enlace de tarea para este estudiante.</p><section class="teacher-panel"><h2>${escapeHtml(selectedStudent.display_name)}</h2><div class="teacher-settings-grid">${zoneRows}</div></section><button class="teacher-button" type="submit">Guardar cambios</button></form>`;
+  return `<section class="teacher-panel"><form class="teacher-form" method="get"><label>Estudiante<select name="student_id" onchange="this.form.submit()">${renderStudentOptions(students, selectedStudent.id)}</select></label><noscript><button class="teacher-button teacher-button--secondary" type="submit">Ver estudiante</button></noscript></form></section><form class="teacher-form" method="post"><input type="hidden" name="selected_student_id" value="${escapeHtml(selectedStudent.id)}">${renderMessage(message)}<p>Escribe minutos positivos o deja el espacio vacío. Elige cómo se completa cada zona. Deja el enlace de tarea vacío para usar el enlace de plataforma del estudiante, o escribe un enlace específico (por ejemplo, una hoja de Kami).</p><section class="teacher-panel"><h2>${escapeHtml(selectedStudent.display_name)}</h2><div class="teacher-settings-grid">${zoneRows}</div></section><button class="teacher-button" type="submit">Guardar cambios</button></form>`;
 }
 
 async function getActiveStudents(supabase) {
