@@ -5,6 +5,17 @@ function sendJson(response, statusCode, body) {
   response.end(JSON.stringify(body));
 }
 
+async function sendStudentProfile(response, supabase, student) {
+  const { data: zoneSettings, error } = await supabase
+    .from('student_zone_settings')
+    .select('zone, target_minutes, completion_mode')
+    .eq('student_id', student.id)
+    .order('zone');
+
+  if (error) console.error(error);
+  sendJson(response, 200, { displayName: student.display_name, zoneSettings: zoneSettings ?? [] });
+}
+
 export default async function handler(request, response) {
   const { supabase, commitCookies } = createSupabaseClient(request, response);
   const { data: userData, error: userError } = await supabase.auth.getUser();
@@ -18,7 +29,7 @@ export default async function handler(request, response) {
 
   const { data: linkedStudent, error: linkedError } = await supabase
     .from('students')
-    .select('display_name')
+    .select('id, display_name')
     .eq('active', true)
     .eq('profile_id', user.id)
     .maybeSingle();
@@ -26,13 +37,13 @@ export default async function handler(request, response) {
   if (linkedError) console.error(linkedError);
 
   if (linkedStudent?.display_name) {
-    sendJson(response, 200, { displayName: linkedStudent.display_name });
+    await sendStudentProfile(response, supabase, linkedStudent);
     return;
   }
 
   const { data: rosterStudent, error: rosterError } = await supabase
     .from('students')
-    .select('display_name')
+    .select('id, display_name')
     .eq('active', true)
     .ilike('approved_google_email', user.email)
     .maybeSingle();
@@ -44,5 +55,5 @@ export default async function handler(request, response) {
     return;
   }
 
-  sendJson(response, 200, { displayName: rosterStudent.display_name });
+  await sendStudentProfile(response, supabase, rosterStudent);
 }
