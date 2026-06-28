@@ -32,9 +32,16 @@ function fieldName(studentId, zone, field) {
 }
 
 export function validateSettingsForm(form, students) {
+  const selectedStudentId = String(form.get('selected_student_id') ?? '').trim();
+  const selectedStudents = selectedStudentId ? students.filter((student) => student.id === selectedStudentId) : students;
   const errors = [];
   const rows = [];
-  for (const student of students) {
+
+  if (selectedStudentId && !selectedStudents.length) {
+    return { rows, errors: ['Selecciona un estudiante válido.'] };
+  }
+
+  for (const student of selectedStudents) {
     for (const [zone] of zones) {
       const rawMinutes = String(form.get(fieldName(student.id, zone, 'target_minutes')) ?? '').trim();
       const completionMode = String(form.get(fieldName(student.id, zone, 'completion_mode')) ?? '').trim();
@@ -65,20 +72,24 @@ function renderModeOptions(selectedMode) {
   return completionModes.map(([value, label]) => `<option value="${value}" ${selectedMode === value ? 'selected' : ''}>${escapeHtml(label)}</option>`).join('');
 }
 
-function renderForm(students, settings, message) {
-  const byKey = settingsByStudentAndZone(settings);
-  const studentSections = students.map((student) => {
-    const zoneRows = zones.map(([zone, label]) => {
-      const saved = byKey.get(`${student.id}:${zone}`) ?? defaultSettings[zone];
-      const minutes = saved.target_minutes ?? '';
-      const mode = saved.completion_mode ?? defaultSettings[zone].completion_mode;
-      const linkUrl = saved.link_url ?? '';
-      return `<div class="teacher-setting-row"><strong>${escapeHtml(label)}</strong><label>Minutos meta<input name="${escapeHtml(fieldName(student.id, zone, 'target_minutes'))}" inputmode="numeric" pattern="[0-9]*" value="${escapeHtml(minutes)}" placeholder="Vacío"></label><label>Modo<select name="${escapeHtml(fieldName(student.id, zone, 'completion_mode'))}">${renderModeOptions(mode)}</select></label><label>Enlace de tarea<input name="${escapeHtml(fieldName(student.id, zone, 'link_url'))}" type="url" value="${escapeHtml(linkUrl)}" placeholder="https://..."></label></div>`;
-    }).join('');
-    return `<section class="teacher-panel"><h2>${escapeHtml(student.display_name)}</h2><div class="teacher-settings-grid">${zoneRows}</div></section>`;
-  }).join('');
+function renderStudentOptions(students, selectedStudentId) {
+  return students.map((student) => `<option value="${escapeHtml(student.id)}" ${student.id === selectedStudentId ? 'selected' : ''}>${escapeHtml(student.display_name)}</option>`).join('');
+}
+
+function renderForm(students, selectedStudentId, settings, message) {
   if (!students.length) return '<section class="teacher-panel"><p>No hay estudiantes activos.</p><p><a class="teacher-button" href="/teacher/students">Agregar estudiantes</a></p></section>';
-  return `<form class="teacher-form" method="post">${message ? `<p class="${message.kind === 'error' ? 'teacher-error' : 'teacher-success'}">${escapeHtml(message.text)}</p>` : ''}<p>Escribe minutos positivos o deja el espacio vacío. Elige cómo se completa cada zona y, si hace falta, agrega un enlace de tarea para ese estudiante.</p>${studentSections}<button class="teacher-button" type="submit">Guardar cambios</button></form>`;
+
+  const selectedStudent = students.find((student) => student.id === selectedStudentId) ?? students[0];
+  const byKey = settingsByStudentAndZone(settings);
+  const zoneRows = zones.map(([zone, label]) => {
+    const saved = byKey.get(`${selectedStudent.id}:${zone}`) ?? defaultSettings[zone];
+    const minutes = saved.target_minutes ?? '';
+    const mode = saved.completion_mode ?? defaultSettings[zone].completion_mode;
+    const linkUrl = saved.link_url ?? '';
+    return `<div class="teacher-setting-row"><strong>${escapeHtml(label)}</strong><label>Minutos meta<input name="${escapeHtml(fieldName(selectedStudent.id, zone, 'target_minutes'))}" inputmode="numeric" pattern="[0-9]*" value="${escapeHtml(minutes)}" placeholder="Vacío"></label><label>Modo<select name="${escapeHtml(fieldName(selectedStudent.id, zone, 'completion_mode'))}">${renderModeOptions(mode)}</select></label><label>Enlace de tarea<input name="${escapeHtml(fieldName(selectedStudent.id, zone, 'link_url'))}" type="url" value="${escapeHtml(linkUrl)}" placeholder="https://..."></label></div>`;
+  }).join('');
+
+  return `<section class="teacher-panel"><form class="teacher-form" method="get"><label>Estudiante<select name="student_id" onchange="this.form.submit()">${renderStudentOptions(students, selectedStudent.id)}</select></label><noscript><button class="teacher-button teacher-button--secondary" type="submit">Ver estudiante</button></noscript></form></section><form class="teacher-form" method="post"><input type="hidden" name="selected_student_id" value="${escapeHtml(selectedStudent.id)}">${message ? `<p class="${message.kind === 'error' ? 'teacher-error' : 'teacher-success'}">${escapeHtml(message.text)}</p>` : ''}<p>Escribe minutos positivos o deja el espacio vacío. Elige cómo se completa cada zona y, si hace falta, agrega un enlace de tarea para este estudiante.</p><section class="teacher-panel"><h2>${escapeHtml(selectedStudent.display_name)}</h2><div class="teacher-settings-grid">${zoneRows}</div></section><button class="teacher-button" type="submit">Guardar cambios</button></form>`;
 }
 
 async function getActiveStudents(supabase) {
@@ -99,9 +110,11 @@ export default async function handler(request, response) {
   const { data: students, error: studentsError } = await getActiveStudents(supabase);
   if (studentsError) console.error('Active student query failed', studentsError);
   const activeStudents = students ?? [];
+  let selectedStudentId = String(request.query?.student_id ?? activeStudents[0]?.id ?? '').trim();
 
   if (request.method === 'POST') {
     const form = await readForm(request);
+    selectedStudentId = String(form.get('selected_student_id') ?? selectedStudentId).trim();
     const result = validateSettingsForm(form, activeStudents);
     if (result.errors.length) {
       message = { kind: 'error', text: result.errors[0] };
@@ -116,7 +129,9 @@ export default async function handler(request, response) {
     }
   }
 
-  const { data: settings, error: settingsError } = await getSettings(supabase, activeStudents.map((student) => student.id));
+  if (!activeStudents.some((student) => student.id === selectedStudentId)) selectedStudentId = activeStudents[0]?.id ?? '';
+  const selectedStudentIds = selectedStudentId ? [selectedStudentId] : [];
+  const { data: settings, error: settingsError } = await getSettings(supabase, selectedStudentIds);
   if (settingsError) console.error('Zone settings query failed', settingsError);
-  return sendHtml(response, page('Configuración de zonas', profile, renderForm(activeStudents, settings ?? [], message)));
+  return sendHtml(response, page('Configuración de zonas', profile, renderForm(activeStudents, selectedStudentId, settings ?? [], message)));
 }
