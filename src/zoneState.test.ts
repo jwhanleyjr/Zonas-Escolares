@@ -6,6 +6,7 @@ import {
   getDisplaySeconds,
   mergeSavedState,
   pauseZone,
+  progressFromServer,
   reopenZone,
   startZone,
   type ZoneProgress,
@@ -111,6 +112,21 @@ function findZone(state: ZoneState, zoneId: string): ZoneProgress {
 
   assertEqual(ejercicio?.completionMode, 'checkbox');
   assertEqual(ejercicio?.targetMinutes, null);
+}
+
+
+{
+  const serverState = progressFromServer([
+    { zone: 'lectura', recorded_seconds: 180, status: 'finished', active_started_at: null },
+    { zone: 'mecanografia', recorded_seconds: 60, status: 'in_progress', active_started_at: '2026-06-28T12:00:00.000Z' },
+  ]);
+  const lectura = findZone(serverState, 'lectura');
+  const mecanografia = findZone(serverState, 'mecanografia');
+
+  assertEqual(lectura.accumulatedSeconds, 180);
+  assertEqual(lectura.status, 'Terminada');
+  assertEqual(mecanografia.status, 'En progreso');
+  assertEqual(mecanografia.lastStartedAt, Date.parse('2026-06-28T12:00:00.000Z'));
 }
 
 console.log('Zone timer and state-transition tests passed.');

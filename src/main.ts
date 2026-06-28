@@ -8,6 +8,8 @@ import {
   startZone,
   type ZoneProgress,
   mergeSavedState,
+  progressFromServer,
+  type ServerZoneProgress,
   type StudentZoneSetting,
   type ZoneDefinition,
   type ZoneState,
@@ -25,6 +27,7 @@ const app = appElement;
 
 let activeZoneDefinitions: ZoneDefinition[] = zoneDefinitions;
 let state = loadState();
+let currentStudentId: string | null = null;
 let currentTime = Date.now();
 let studentName = 'estudiante';
 
@@ -75,18 +78,38 @@ function getStatusLabel(zone: ZoneProgress): string {
 
 function updateState(nextState: ZoneState): void {
   state = nextState;
-  saveState(state);
+  saveState(state, currentStudentId);
   render();
+}
+
+async function syncProgress(action: string, zoneId: string): Promise<void> {
+  try {
+    const response = await fetch('/api/student-progress', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ action, zone: zoneId }),
+    });
+    if (!response.ok) throw new Error(`Progress save failed: ${response.status}`);
+    const data = (await response.json()) as { progress?: unknown };
+    if (Array.isArray(data.progress)) {
+      updateState(progressFromServer(data.progress as ServerZoneProgress[], activeZoneDefinitions));
+    }
+  } catch (error) {
+    console.error(error);
+  }
 }
 
 function handlePrimaryAction(zone: ZoneProgress): void {
   const now = Date.now();
   if (zone.status === 'En progreso') {
     updateState(pauseZone(state, zone.id, now));
+    void syncProgress('pause', zone.id);
     return;
   }
 
   updateState(startZone(state, zone.id, now));
+  void syncProgress('start', zone.id);
 }
 
 function getProgressPercent(displaySeconds: number, targetMinutes: number | null): number {
@@ -305,21 +328,40 @@ async function loadStudentName(): Promise<void> {
     const response = await fetch('/api/auth/student', { credentials: 'same-origin' });
     if (!response.ok) return;
 
-    const data = (await response.json()) as { displayName?: unknown; zoneSettings?: unknown };
+    const data = (await response.json()) as { displayName?: unknown; studentId?: unknown; zoneSettings?: unknown };
     if (typeof data.displayName !== 'string') return;
 
     const displayName = data.displayName.trim();
     if (!displayName) return;
 
     studentName = displayName;
+    currentStudentId = typeof data.studentId === 'string' ? data.studentId : null;
+    state = loadState(currentStudentId);
 
     if (Array.isArray(data.zoneSettings)) {
       activeZoneDefinitions = applyZoneSettings(zoneDefinitions, data.zoneSettings as StudentZoneSetting[]);
       state = mergeSavedState(state, activeZoneDefinitions);
-      saveState(state);
+      saveState(state, currentStudentId);
     }
 
+    await loadServerProgress();
+
     render();
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+async function loadServerProgress(): Promise<void> {
+  try {
+    const response = await fetch('/api/student-progress', { credentials: 'same-origin' });
+    if (!response.ok) return;
+
+    const data = (await response.json()) as { progress?: unknown };
+    if (!Array.isArray(data.progress)) return;
+
+    state = progressFromServer(data.progress as ServerZoneProgress[], activeZoneDefinitions);
+    saveState(state, currentStudentId);
   } catch (error) {
     console.error(error);
   }

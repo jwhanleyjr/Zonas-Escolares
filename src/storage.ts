@@ -2,8 +2,12 @@ import { createInitialState, mergeSavedState, type ZoneState } from './zones.js'
 
 export const storageKey = 'zonas-escolares-progress-v1';
 
-export function loadState(): ZoneState {
-  const savedValue = localStorage.getItem(storageKey);
+function getStorageKey(studentId: string | null = null): string {
+  return studentId ? `${storageKey}:${studentId}` : storageKey;
+}
+
+export function loadState(studentId: string | null = null): ZoneState {
+  const savedValue = localStorage.getItem(getStorageKey(studentId));
   if (!savedValue) return createInitialState();
 
   try {
@@ -14,11 +18,11 @@ export function loadState(): ZoneState {
   }
 }
 
-export function saveState(state: ZoneState): void {
-  localStorage.setItem(storageKey, JSON.stringify(state));
+export function saveState(state: ZoneState, studentId: string | null = null): void {
+  localStorage.setItem(getStorageKey(studentId), JSON.stringify(state));
 }
 
-export function resetState(): ZoneState {
-  localStorage.removeItem(storageKey);
+export function resetState(studentId: string | null = null): ZoneState {
+  localStorage.removeItem(getStorageKey(studentId));
   return createInitialState();
 }
