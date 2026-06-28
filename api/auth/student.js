@@ -13,7 +13,7 @@ async function sendStudentProfile(response, supabase, student) {
     .order('zone');
 
   if (error) console.error(error);
-  sendJson(response, 200, { displayName: student.display_name, zoneSettings: zoneSettings ?? [] });
+  sendJson(response, 200, { studentId: student.id, displayName: student.display_name, zoneSettings: zoneSettings ?? [] });
 }
 
 export default async function handler(request, response) {

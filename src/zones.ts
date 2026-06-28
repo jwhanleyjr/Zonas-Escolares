@@ -31,6 +31,13 @@ export type ZoneState = {
   zones: ZoneProgress[];
 };
 
+export type ServerZoneProgress = {
+  zone: string;
+  recorded_seconds: number | null;
+  status: 'not_started' | 'in_progress' | 'paused' | 'finished';
+  active_started_at: string | null;
+};
+
 export const zoneDefinitions: ZoneDefinition[] = [
   {
     id: 'lectura',
@@ -202,6 +209,39 @@ export function reopenZone(state: ZoneState, zoneId: string): ZoneState {
 
 export function completedZoneCount(state: ZoneState): number {
   return state.zones.filter((zone) => zone.status === 'Terminada').length;
+}
+
+function toZoneStatus(status: ServerZoneProgress['status']): ZoneStatus {
+  if (status === 'in_progress') return 'En progreso';
+  if (status === 'paused') return 'Pausada';
+  if (status === 'finished') return 'Terminada';
+  return 'No iniciada';
+}
+
+export function progressFromServer(rows: ServerZoneProgress[], definitions: ZoneDefinition[] = zoneDefinitions): ZoneState {
+  const rowsById = new Map(rows.map((row) => [normalizeZoneId(row.zone), row]));
+
+  return {
+    zones: definitions.map((definition) => {
+      const row = rowsById.get(definition.id);
+      if (!row) {
+        return {
+          id: definition.id,
+          accumulatedSeconds: 0,
+          status: 'No iniciada',
+          lastStartedAt: null,
+        } satisfies ZoneProgress;
+      }
+
+      const lastStartedAt = row.active_started_at ? Date.parse(row.active_started_at) : NaN;
+      return {
+        id: definition.id,
+        accumulatedSeconds: Number(row.recorded_seconds ?? 0),
+        status: toZoneStatus(row.status),
+        lastStartedAt: Number.isFinite(lastStartedAt) ? lastStartedAt : null,
+      };
+    }),
+  };
 }
 
 export function mergeSavedState(savedState: ZoneState, definitions: ZoneDefinition[] = zoneDefinitions): ZoneState {
