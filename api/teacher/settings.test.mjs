@@ -2,6 +2,7 @@ import { strict as assert } from 'node:assert';
 import { completionModes, validateSettingsForm, zones } from './settings.js';
 
 const students = [{ id: 'student-1', display_name: 'Ana' }];
+const twoStudents = [...students, { id: 'student-2', display_name: 'Ben' }];
 
 function completeForm(overrides = {}) {
   const form = new URLSearchParams();
@@ -39,4 +40,22 @@ function completeForm(overrides = {}) {
 }
 
 assert.deepEqual(completionModes.map(([mode]) => mode), ['timed', 'task', 'checkbox'], 'completion modes match the database enum values');
+
+{
+  const form = completeForm();
+  form.set('selected_student_id', 'student-1');
+  const result = validateSettingsForm(form, twoStudents);
+  assert.deepEqual(result.errors, [], 'selected student settings save has no validation errors');
+  assert.equal(result.rows.length, zones.length, 'selected student settings save prepares only one student of rows');
+  assert.equal(result.rows.every((row) => row.student_id === 'student-1'), true, 'selected student save does not rewrite other students');
+}
+
+{
+  const form = completeForm();
+  form.set('selected_student_id', 'missing-student');
+  const result = validateSettingsForm(form, twoStudents);
+  assert.match(result.errors[0], /estudiante válido/i, 'unknown selected student is rejected');
+  assert.equal(result.rows.length, 0, 'unknown selected student produces no rows');
+}
+
 console.log('Teacher settings validation tests passed.');
