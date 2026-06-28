@@ -131,7 +131,7 @@ function renderZoneActions(definition: ZoneDefinition, zone: ZoneProgress): stri
   if (definition.completionMode === 'checkbox') {
     return `
       <div class="zone-actions zone-actions--checkbox">
-        <a class="assignment-link" href="${definition.linkUrl}" target="_blank" rel="noopener noreferrer">
+        <a class="assignment-link" href="${escapeHtml(definition.linkUrl)}" target="_blank" rel="noopener noreferrer">
           📂 Abrir tarea
         </a>
       </div>
@@ -146,7 +146,7 @@ function renderZoneActions(definition: ZoneDefinition, zone: ZoneProgress): stri
       <button class="done-action" type="button" data-action="finish" data-zone-id="${zone.id}" ${isFinished ? 'disabled' : ''}>
         ✅ Terminé
       </button>
-      <a class="assignment-link" href="${definition.linkUrl}" target="_blank" rel="noopener noreferrer">
+      <a class="assignment-link" href="${escapeHtml(definition.linkUrl)}" target="_blank" rel="noopener noreferrer">
         📂 Abrir tarea
       </a>
     </div>

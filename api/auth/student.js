@@ -8,7 +8,7 @@ function sendJson(response, statusCode, body) {
 async function sendStudentProfile(response, supabase, student) {
   const { data: zoneSettings, error } = await supabase
     .from('student_zone_settings')
-    .select('zone, target_minutes, completion_mode')
+    .select('zone, target_minutes, completion_mode, link_url')
     .eq('student_id', student.id)
     .order('zone');
 
