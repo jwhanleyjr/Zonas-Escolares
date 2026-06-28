@@ -24,12 +24,10 @@ export default async function handler(request, response) {
     ['Zonas pendientes hoy', pending],
   ].map(([label, value]) => `<article class="summary-card"><span>${label}</span><strong>${value}</strong></article>`).join('');
   const links = [
-    ['/teacher/students', 'Estudiantes', 'Lista, altas y edición de estudiantes.'],
-    ['/teacher/students', 'Enlaces de plataformas', 'Editar Raz Español, TypingClub, IXL y Ellii desde cada estudiante.'],
+    ['/teacher/students', 'Estudiantes', 'Agregar estudiantes y editar sus enlaces de plataformas.'],
     ['/teacher/kami', 'Clases Diversas', 'Asignaciones de Kami por fecha.'],
     ['/teacher/progress', 'Progreso de hoy', 'Tiempo de trabajo registrado por zona.'],
-    ['/teacher/settings', 'Configuración de zonas', 'Próximamente.'],
   ].map(([href, title, text]) => `<a class="teacher-card" href="${href}"><strong>${title}</strong><span>${text}</span></a>`).join('');
 
-  return sendHtml(response, page('Panel del maestro', profile, `<section class="summary-grid">${cards}</section><section class="teacher-grid">${links}</section>`));
+  return sendHtml(response, page('Panel del maestro', profile, `<section class="teacher-panel teacher-overview"><h2>Resumen de hoy</h2><div class="summary-grid">${cards}</div></section><section class="teacher-panel teacher-overview"><h2>Acciones frecuentes</h2><div class="teacher-grid">${links}</div></section>`));
 }
