@@ -987,3 +987,19 @@ body.teacher-page {
   background: #dcfce7;
   color: #166534;
 }
+
+.teacher-filter-form {
+  align-items: end;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin: 1rem 0 1.25rem;
+}
+
+.teacher-filter-form label {
+  min-width: 12rem;
+}
+
+.inline-confirm-form {
+  margin: 0;
+}
