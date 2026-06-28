@@ -1,12 +1,15 @@
 import {
+  applyZoneSettings,
   completedZoneCount,
   createInitialState,
   finishZone,
   getDisplaySeconds,
+  mergeSavedState,
   pauseZone,
   startZone,
   type ZoneProgress,
   type ZoneState,
+  zoneDefinitions,
 } from './zones.js';
 
 const second = 1000;
@@ -72,6 +75,33 @@ function findZone(state: ZoneState, zoneId: string): ZoneProgress {
   assertEqual(ejercicio.accumulatedSeconds, 600);
   assertEqual(ejercicio.lastStartedAt, null);
   assertEqual(completedZoneCount(finished), 1);
+}
+
+{
+  const settings = [{ zone: 'lectura', target_minutes: 7, completion_mode: 'timed' as const }];
+  const definitions = applyZoneSettings(zoneDefinitions, settings);
+  const lectura = definitions.find((definition) => definition.id === 'lectura');
+
+  assertEqual(lectura?.targetMinutes, 7);
+  assertEqual(lectura?.completionMode, 'timed');
+}
+
+{
+  const savedState: ZoneState = {
+    zones: [{ id: 'diverso-clases', accumulatedSeconds: 120, status: 'Pausada', lastStartedAt: null }],
+  };
+  const merged = mergeSavedState(savedState);
+  const clasesDiversas = findZone(merged, 'clases_diversas');
+
+  assertEqual(clasesDiversas.accumulatedSeconds, 120);
+  assertEqual(clasesDiversas.status, 'Pausada');
+}
+
+{
+  const ejercicio = zoneDefinitions.find((definition) => definition.id === 'ejercicio');
+
+  assertEqual(ejercicio?.completionMode, 'checkbox');
+  assertEqual(ejercicio?.targetMinutes, null);
 }
 
 console.log('Zone timer and state-transition tests passed.');
