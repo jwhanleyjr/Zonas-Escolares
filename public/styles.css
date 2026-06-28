@@ -138,7 +138,7 @@ h1 {
 
 .zone-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr));
   gap: 1rem;
 }
 
@@ -147,6 +147,7 @@ h1 {
   --card-light: #ffe5eb;
   position: relative;
   display: flex;
+  min-width: 0;
   min-height: 30rem;
   flex-direction: column;
   justify-content: space-between;
@@ -216,6 +217,10 @@ h1 {
   margin-top: 0.6rem;
 }
 
+.zone-card__top > div {
+  min-width: 0;
+}
+
 .zone-icon {
   display: grid;
   width: 4.5rem;
@@ -231,8 +236,9 @@ h1 {
 .zone-card h2 {
   margin: 0;
   color: #271f4a;
-  font-size: clamp(1.8rem, 3vw, 2.75rem);
-  line-height: 1.02;
+  font-size: clamp(1.65rem, 2.35vw, 2.35rem);
+  line-height: 1.05;
+  overflow-wrap: anywhere;
 }
 
 .assignment {
@@ -464,9 +470,6 @@ a:focus-visible {
     transform: none;
   }
 
-  .zone-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
 }
 
 @media (max-width: 640px) {
@@ -476,10 +479,6 @@ a:focus-visible {
 
   .page-shell {
     padding: 0.75rem;
-  }
-
-  .zone-grid {
-    grid-template-columns: 1fr;
   }
 
   .helper-panel {
