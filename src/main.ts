@@ -310,10 +310,12 @@ app.addEventListener('click', (event) => {
 
   if (action === 'finish') {
     updateState(finishZone(state, zoneId, Date.now()));
+    void syncProgress('finish', zoneId);
   }
 
   if (action === 'reopen') {
     updateState(reopenZone(state, zoneId));
+    void syncProgress('reopen', zoneId);
   }
 });
 
