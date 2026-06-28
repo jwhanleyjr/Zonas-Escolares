@@ -10,6 +10,36 @@ import {
   zoneDefinitions,
 } from './zones.js';
 
+
+type SupabaseQueryBuilder = {
+  eq: (column: string, value: string | boolean) => SupabaseQueryBuilder;
+  maybeSingle: () => Promise<{ data: Record<string, unknown> | null; error?: unknown }>;
+};
+
+type SupabaseBrowserClient = {
+  auth: {
+    getUser: () => Promise<{ data: { user: { id: string; email?: string; user_metadata?: Record<string, unknown> } | null }; error?: unknown }>;
+  };
+  from: (table: string) => {
+    select: (columns: string) => SupabaseQueryBuilder;
+  };
+};
+
+type SupabaseBrowserModule = {
+  createBrowserClient: (url: string, anonKey: string) => SupabaseBrowserClient;
+};
+
+type SupabaseBrowserConfig = {
+  url?: string;
+  anonKey?: string;
+};
+
+declare global {
+  interface Window {
+    ZONAS_SUPABASE_CONFIG?: SupabaseBrowserConfig;
+  }
+}
+
 const appElement = document.querySelector<HTMLDivElement>('#app');
 
 if (!appElement) {
@@ -20,6 +50,80 @@ const app = appElement;
 
 let state = loadState();
 let currentTime = Date.now();
+let studentDisplayName = '';
+let sessionLoaded = false;
+
+
+function getTodayLabel(now = new Date()): string {
+  return new Intl.DateTimeFormat('es-DO', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    timeZone: 'America/Santo_Domingo',
+  }).format(now);
+}
+
+function getMetadataName(metadata: Record<string, unknown> | undefined): string {
+  const fullName = metadata?.full_name;
+  if (typeof fullName === 'string' && fullName.trim()) return fullName.trim();
+
+  const name = metadata?.name;
+  if (typeof name === 'string' && name.trim()) return name.trim();
+
+  return '';
+}
+
+
+function escapeHtml(value: string): string {
+  return value.replace(/[&<>'"]/g, (char) => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    "'": '&#39;',
+    '"': '&quot;',
+  })[char] ?? char);
+}
+
+function getStudentHeaderLabel(): string {
+  if (studentDisplayName) return `👋 Hola, ${escapeHtml(studentDisplayName)}`;
+  if (!sessionLoaded) return '👋 Cargando tu nombre...';
+  return '👋 ¡Hola!';
+}
+
+async function loadStudentDisplayName(): Promise<void> {
+  const config = window.ZONAS_SUPABASE_CONFIG;
+  if (!config?.url || !config?.anonKey) {
+    sessionLoaded = true;
+    render();
+    return;
+  }
+
+  // @ts-expect-error Remote browser module is loaded directly by the static page.
+  const { createBrowserClient } = (await import('https://esm.sh/@supabase/ssr@0.6.1')) as SupabaseBrowserModule;
+  const supabase = createBrowserClient(config.url, config.anonKey);
+  const { data: userData, error: userError } = await supabase.auth.getUser();
+  const user = userData.user;
+
+  if (userError || !user) {
+    sessionLoaded = true;
+    render();
+    return;
+  }
+
+  const { data: student } = await supabase
+    .from('students')
+    .select('display_name')
+    .eq('active', true)
+    .eq('profile_id', user.id)
+    .maybeSingle();
+
+  const studentName = student?.display_name;
+  studentDisplayName = typeof studentName === 'string' && studentName.trim()
+    ? studentName.trim()
+    : getMetadataName(user.user_metadata) || user.email || '';
+  sessionLoaded = true;
+  render();
+}
 
 function formatMinutes(seconds: number): string {
   return `${Math.floor(seconds / 60)} min`;
@@ -125,14 +229,11 @@ function render(): void {
 
   app.innerHTML = `
     <main class="page-shell">
-      <nav class="top-actions" aria-label="Acceso">
-        <a class="auth-entry-link" href="/auth/login.html">Continuar con Google</a>
-      </nav>
-
       <section class="hero" aria-labelledby="page-title">
         <div>
-          <p class="hero__label">👋 ¡Hola! Elige tu orden</p>
+          <p class="hero__label">${getStudentHeaderLabel()}</p>
           <h1 id="page-title">☀️ Mis zonas de hoy</h1>
+          <p class="student-date">Hoy es ${getTodayLabel()}</p>
           <p class="hero__text">Puedes empezar cualquier zona. Si empiezas otra, la zona activa se pausa sola.</p>
         </div>
         <div class="progress-summary" aria-live="polite" aria-label="${completed} de ${zoneDefinitions.length} zonas terminadas">
@@ -191,3 +292,5 @@ setInterval(() => {
 }, 1000);
 
 render();
+
+void loadStudentDisplayName();
