@@ -186,6 +186,20 @@ export function finishZone(state: ZoneState, zoneId: string, now: number): ZoneS
   };
 }
 
+export function reopenZone(state: ZoneState, zoneId: string): ZoneState {
+  return {
+    zones: state.zones.map((zone) => {
+      if (zone.id !== zoneId || zone.status !== 'Terminada') return zone;
+
+      return {
+        ...zone,
+        status: zone.accumulatedSeconds > 0 ? 'Pausada' : 'No iniciada',
+        lastStartedAt: null,
+      };
+    }),
+  };
+}
+
 export function completedZoneCount(state: ZoneState): number {
   return state.zones.filter((zone) => zone.status === 'Terminada').length;
 }
