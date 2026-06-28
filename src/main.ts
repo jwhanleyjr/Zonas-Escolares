@@ -1,4 +1,4 @@
-import { loadState, resetState, saveState } from './storage.js';
+import { loadState, saveState } from './storage.js';
 import {
   completedZoneCount,
   finishZone,
@@ -125,10 +125,6 @@ function render(): void {
 
   app.innerHTML = `
     <main class="page-shell">
-      <nav class="top-actions" aria-label="Acceso">
-        <a class="auth-entry-link" href="/auth/login.html">Continuar con Google</a>
-      </nav>
-
       <section class="hero" aria-labelledby="page-title">
         <div>
           <p class="hero__label">👋 ¡Hola! Elige tu orden</p>
@@ -149,7 +145,9 @@ function render(): void {
 
       <section class="helper-panel" aria-label="Ayuda">
         <p>Tu tiempo es <strong>recorded work time</strong>. Tu maestra o maestro revisa si la tarea está completa.</p>
-        <button class="reset-button" type="button" data-action="reset">🧹 Borrar datos de desarrollo</button>
+        <form method="post" action="/api/auth/logout">
+          <button class="logout-button" type="submit">🚪 Salir</button>
+        </form>
       </section>
     </main>
   `;
@@ -164,11 +162,6 @@ app.addEventListener('click', (event) => {
 
   const action = actionElement.dataset.action;
   const zoneId = actionElement.dataset.zoneId;
-
-  if (action === 'reset') {
-    updateState(resetState());
-    return;
-  }
 
   if (!zoneId) return;
 
