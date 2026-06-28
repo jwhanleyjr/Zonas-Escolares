@@ -6,7 +6,11 @@ import {
   pauseZone,
   startZone,
   type ZoneProgress,
+  mergeSavedState,
+  type StudentZoneSetting,
+  type ZoneDefinition,
   type ZoneState,
+  applyZoneSettings,
   zoneDefinitions,
 } from './zones.js';
 
@@ -18,6 +22,7 @@ if (!appElement) {
 
 const app = appElement;
 
+let activeZoneDefinitions: ZoneDefinition[] = zoneDefinitions;
 let state = loadState();
 let currentTime = Date.now();
 let studentName = 'estudiante';
@@ -83,20 +88,34 @@ function handlePrimaryAction(zone: ZoneProgress): void {
   updateState(startZone(state, zone.id, now));
 }
 
-function getProgressPercent(displaySeconds: number, targetMinutes: number): number {
+function getProgressPercent(displaySeconds: number, targetMinutes: number | null): number {
+  if (targetMinutes === null) return 0;
   const targetSeconds = targetMinutes * 60;
   if (targetSeconds <= 0) return 0;
   return Math.min(100, Math.round((displaySeconds / targetSeconds) * 100));
 }
 
+function getTargetLabel(definition: ZoneDefinition): string {
+  if (definition.completionMode === 'task') return 'Tarea';
+  if (definition.completionMode === 'checkbox') return 'Marca';
+  if (definition.targetMinutes === null) return 'Sin meta';
+  return `${definition.targetMinutes} min`;
+}
+
+function getModeLabel(definition: ZoneDefinition): string {
+  if (definition.completionMode === 'task') return 'Tarea';
+  if (definition.completionMode === 'checkbox') return 'Marca';
+  return 'Tiempo';
+}
+
 function renderProgressStars(completed: number): string {
-  return zoneDefinitions
+  return activeZoneDefinitions
     .map((_, index) => `<span class="star ${index < completed ? 'star--filled' : ''}" aria-hidden="true">★</span>`)
     .join('');
 }
 
 function renderZoneCard(zone: ZoneProgress): string {
-  const definition = zoneDefinitions.find((candidate) => candidate.id === zone.id);
+  const definition = activeZoneDefinitions.find((candidate) => candidate.id === zone.id);
   if (!definition) return '';
 
   const displaySeconds = getDisplaySeconds(zone, currentTime);
@@ -116,17 +135,21 @@ function renderZoneCard(zone: ZoneProgress): string {
       </div>
       ${isRunning ? '<p class="active-badge">🔥 Estoy aquí</p>' : ''}
       ${isFinished ? '<p class="confetti-badge" aria-label="Zona terminada">✨ ¡Buen trabajo! ✨</p>' : ''}
-      <div class="progress-ring" style="--progress: ${progressPercent}%" aria-label="${progressPercent}% del tiempo meta registrado">
+      <div class="progress-ring" style="--progress: ${progressPercent}%" aria-label="${progressPercent}% de la meta registrada">
         <span>${progressPercent}%</span>
       </div>
       <dl class="zone-details">
         <div>
           <dt>🎯 Meta</dt>
-          <dd>${definition.targetMinutes} min</dd>
+          <dd>${getTargetLabel(definition)}</dd>
         </div>
         <div>
           <dt>⏱️ Tiempo</dt>
           <dd>${formatMinutes(displaySeconds)}</dd>
+        </div>
+        <div>
+          <dt>Modo</dt>
+          <dd>${getModeLabel(definition)}</dd>
         </div>
         <div>
           <dt>Estado</dt>
@@ -161,9 +184,9 @@ function render(): void {
           <p class="hero__date">Hoy es ${formatStudentDate(new Date(currentTime))}</p>
           <p class="hero__text">Puedes empezar cualquier zona. Si empiezas otra, la zona activa se pausa sola.</p>
         </div>
-        <div class="progress-summary" aria-live="polite" aria-label="${completed} de ${zoneDefinitions.length} zonas terminadas">
+        <div class="progress-summary" aria-live="polite" aria-label="${completed} de ${activeZoneDefinitions.length} zonas terminadas">
           <span class="trophy" aria-hidden="true">🏆</span>
-          <strong>${completed} de ${zoneDefinitions.length}</strong>
+          <strong>${completed} de ${activeZoneDefinitions.length}</strong>
           <span>zonas terminadas</span>
           <div class="star-road">${renderProgressStars(completed)}</div>
         </div>
@@ -218,13 +241,20 @@ async function loadStudentName(): Promise<void> {
     const response = await fetch('/api/auth/student', { credentials: 'same-origin' });
     if (!response.ok) return;
 
-    const data = (await response.json()) as { displayName?: unknown };
+    const data = (await response.json()) as { displayName?: unknown; zoneSettings?: unknown };
     if (typeof data.displayName !== 'string') return;
 
     const displayName = data.displayName.trim();
     if (!displayName) return;
 
     studentName = displayName;
+
+    if (Array.isArray(data.zoneSettings)) {
+      activeZoneDefinitions = applyZoneSettings(zoneDefinitions, data.zoneSettings as StudentZoneSetting[]);
+      state = mergeSavedState(state, activeZoneDefinitions);
+      saveState(state);
+    }
+
     render();
   } catch (error) {
     console.error(error);

@@ -1,13 +1,22 @@
 export type ZoneStatus = 'No iniciada' | 'En progreso' | 'Pausada' | 'Terminada';
 
+export type CompletionMode = 'timed' | 'task' | 'checkbox';
+
 export type ZoneDefinition = {
   id: string;
   name: string;
   assignmentTitle: string;
-  targetMinutes: number;
+  targetMinutes: number | null;
+  completionMode: CompletionMode;
   linkUrl: string;
   icon: string;
   theme: string;
+};
+
+export type StudentZoneSetting = {
+  zone: string;
+  target_minutes: number | null;
+  completion_mode: CompletionMode;
 };
 
 export type ZoneProgress = {
@@ -27,6 +36,7 @@ export const zoneDefinitions: ZoneDefinition[] = [
     name: 'Lectura',
     assignmentTitle: 'Lee tu cuento de hoy',
     targetMinutes: 20,
+    completionMode: 'timed',
     linkUrl: 'https://example.com/lectura',
     icon: '📚',
     theme: 'coral',
@@ -36,6 +46,7 @@ export const zoneDefinitions: ZoneDefinition[] = [
     name: 'Mecanografía',
     assignmentTitle: 'Practica palabras nuevas',
     targetMinutes: 15,
+    completionMode: 'timed',
     linkUrl: 'https://example.com/mecanografia',
     icon: '⌨️',
     theme: 'blue',
@@ -45,16 +56,18 @@ export const zoneDefinitions: ZoneDefinition[] = [
     name: 'Matemáticas',
     assignmentTitle: 'Resuelve problemas cortos',
     targetMinutes: 25,
+    completionMode: 'timed',
     linkUrl: 'https://example.com/matematicas',
     icon: '➕',
     theme: 'purple',
   },
   {
-    id: 'diverso-clases',
+    id: 'clases_diversas',
     name: 'Clases Diversas',
     assignmentTitle: 'Termina tu actividad especial',
-    targetMinutes: 20,
-    linkUrl: 'https://example.com/diverso-clases',
+    targetMinutes: null,
+    completionMode: 'task',
+    linkUrl: 'https://example.com/clases-diversas',
     icon: '🎨',
     theme: 'pink',
   },
@@ -63,6 +76,7 @@ export const zoneDefinitions: ZoneDefinition[] = [
     name: 'Inglés',
     assignmentTitle: 'Escucha y repite frases',
     targetMinutes: 15,
+    completionMode: 'timed',
     linkUrl: 'https://example.com/ingles',
     icon: '🌍',
     theme: 'orange',
@@ -71,12 +85,32 @@ export const zoneDefinitions: ZoneDefinition[] = [
     id: 'ejercicio',
     name: 'Ejercicio',
     assignmentTitle: 'Muévete con cuidado',
-    targetMinutes: 10,
+    targetMinutes: null,
+    completionMode: 'checkbox',
     linkUrl: 'https://example.com/ejercicio',
     icon: '🏃',
     theme: 'lime',
   },
 ];
+
+const legacyZoneIds = new Map([['diverso-clases', 'clases_diversas']]);
+
+function normalizeZoneId(zoneId: string): string {
+  return legacyZoneIds.get(zoneId) ?? zoneId;
+}
+
+export function applyZoneSettings(definitions: ZoneDefinition[], settings: StudentZoneSetting[]): ZoneDefinition[] {
+  const settingsByZone = new Map(settings.map((setting) => [setting.zone, setting]));
+  return definitions.map((definition) => {
+    const setting = settingsByZone.get(definition.id);
+    if (!setting) return definition;
+    return {
+      ...definition,
+      targetMinutes: setting.target_minutes,
+      completionMode: setting.completion_mode,
+    };
+  });
+}
 
 export function createInitialState(definitions: ZoneDefinition[] = zoneDefinitions): ZoneState {
   return {
@@ -155,7 +189,7 @@ export function completedZoneCount(state: ZoneState): number {
 }
 
 export function mergeSavedState(savedState: ZoneState, definitions: ZoneDefinition[] = zoneDefinitions): ZoneState {
-  const savedById = new Map(savedState.zones.map((zone) => [zone.id, zone]));
+  const savedById = new Map(savedState.zones.map((zone) => [normalizeZoneId(zone.id), { ...zone, id: normalizeZoneId(zone.id) }]));
 
   return {
     zones: definitions.map((definition) => {
