@@ -26,32 +26,6 @@ a {
   -webkit-tap-highlight-color: transparent;
 }
 
-.top-actions {
-  display: flex;
-  justify-content: flex-end;
-  margin-bottom: 1rem;
-}
-
-.auth-entry-link {
-  display: inline-grid;
-  min-height: 3.75rem;
-  place-items: center;
-  padding: 0 1.25rem;
-  border: 4px solid #ffffff;
-  border-radius: 999px;
-  color: #3b2b00;
-  background: #ffdf3f;
-  box-shadow: 0 0.35rem 0 #d69f00;
-  font-size: 1rem;
-  font-weight: 1000;
-  text-decoration: none;
-  touch-action: manipulation;
-}
-
-.auth-entry-link:active {
-  transform: translateY(0.1rem) scale(1.01);
-}
-
 .page-shell {
   width: min(1220px, 100%);
   margin: 0 auto;
@@ -96,6 +70,13 @@ h1 {
   font-size: clamp(2.6rem, 6vw, 5rem);
   line-height: 0.98;
   letter-spacing: -0.05em;
+}
+
+.hero__date {
+  margin: 0.5rem 0 0;
+  color: #7a3bd1;
+  font-size: clamp(1.15rem, 2vw, 1.45rem);
+  font-weight: 1000;
 }
 
 .hero__text {
@@ -362,7 +343,7 @@ h1 {
 .primary-action,
 .done-action,
 .assignment-link,
-.reset-button {
+.logout-button {
   min-height: 4.25rem;
   border: 0;
   border-radius: 1.25rem;
@@ -406,11 +387,11 @@ h1 {
 .primary-action:active,
 .done-action:active,
 .assignment-link:active,
-.reset-button:active,
+.logout-button:active,
 .primary-action:hover,
 .done-action:hover,
 .assignment-link:hover,
-.reset-button:hover {
+.logout-button:hover {
   transform: translateY(0.1rem) scale(1.015);
 }
 
@@ -435,7 +416,7 @@ h1 {
   line-height: 1.4;
 }
 
-.reset-button {
+.logout-button {
   min-width: 15rem;
   border: 4px solid #c7b7df;
   color: #4a3a73;
@@ -506,7 +487,11 @@ a:focus-visible {
     flex-direction: column;
   }
 
-  .reset-button {
+  .helper-panel form {
+    width: 100%;
+  }
+
+  .logout-button {
     width: 100%;
     min-width: 0;
   }

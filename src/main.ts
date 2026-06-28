@@ -1,4 +1,4 @@
-import { loadState, resetState, saveState } from './storage.js';
+import { loadState, saveState } from './storage.js';
 import {
   completedZoneCount,
   finishZone,
@@ -20,9 +20,38 @@ const app = appElement;
 
 let state = loadState();
 let currentTime = Date.now();
+let studentName = 'estudiante';
+
+const monthNames = [
+  'enero',
+  'febrero',
+  'marzo',
+  'abril',
+  'mayo',
+  'junio',
+  'julio',
+  'agosto',
+  'septiembre',
+  'octubre',
+  'noviembre',
+  'diciembre',
+];
+
+function escapeHtml(value: string): string {
+  return value
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
+}
 
 function formatMinutes(seconds: number): string {
   return `${Math.floor(seconds / 60)} min`;
+}
+
+function formatStudentDate(date: Date): string {
+  return `${date.getDate()} ${monthNames[date.getMonth()]} de ${date.getFullYear()}`;
 }
 
 function getActionLabel(zone: ZoneProgress): string {
@@ -125,14 +154,11 @@ function render(): void {
 
   app.innerHTML = `
     <main class="page-shell">
-      <nav class="top-actions" aria-label="Acceso">
-        <a class="auth-entry-link" href="/auth/login.html">Continuar con Google</a>
-      </nav>
-
       <section class="hero" aria-labelledby="page-title">
         <div>
-          <p class="hero__label">👋 ¡Hola! Elige tu orden</p>
+          <p class="hero__label">👋 ¡Hola, ${escapeHtml(studentName)}!</p>
           <h1 id="page-title">☀️ Mis zonas de hoy</h1>
+          <p class="hero__date">Hoy es ${formatStudentDate(new Date(currentTime))}</p>
           <p class="hero__text">Puedes empezar cualquier zona. Si empiezas otra, la zona activa se pausa sola.</p>
         </div>
         <div class="progress-summary" aria-live="polite" aria-label="${completed} de ${zoneDefinitions.length} zonas terminadas">
@@ -149,7 +175,9 @@ function render(): void {
 
       <section class="helper-panel" aria-label="Ayuda">
         <p>Tu tiempo es <strong>recorded work time</strong>. Tu maestra o maestro revisa si la tarea está completa.</p>
-        <button class="reset-button" type="button" data-action="reset">🧹 Borrar datos de desarrollo</button>
+        <form method="post" action="/api/auth/logout">
+          <button class="logout-button" type="submit">🚪 Salir</button>
+        </form>
       </section>
     </main>
   `;
@@ -164,11 +192,6 @@ app.addEventListener('click', (event) => {
 
   const action = actionElement.dataset.action;
   const zoneId = actionElement.dataset.zoneId;
-
-  if (action === 'reset') {
-    updateState(resetState());
-    return;
-  }
 
   if (!zoneId) return;
 
@@ -190,4 +213,23 @@ setInterval(() => {
   }
 }, 1000);
 
+async function loadStudentName(): Promise<void> {
+  try {
+    const response = await fetch('/api/auth/student', { credentials: 'same-origin' });
+    if (!response.ok) return;
+
+    const data = (await response.json()) as { displayName?: unknown };
+    if (typeof data.displayName !== 'string') return;
+
+    const displayName = data.displayName.trim();
+    if (!displayName) return;
+
+    studentName = displayName;
+    render();
+  } catch (error) {
+    console.error(error);
+  }
+}
+
 render();
+void loadStudentName();
