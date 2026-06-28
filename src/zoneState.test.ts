@@ -6,6 +6,7 @@ import {
   getDisplaySeconds,
   mergeSavedState,
   pauseZone,
+  reopenZone,
   startZone,
   type ZoneProgress,
   type ZoneState,
@@ -75,6 +76,14 @@ function findZone(state: ZoneState, zoneId: string): ZoneProgress {
   assertEqual(ejercicio.accumulatedSeconds, 600);
   assertEqual(ejercicio.lastStartedAt, null);
   assertEqual(completedZoneCount(finished), 1);
+
+  const reopened = reopenZone(finished, 'ejercicio');
+  const reopenedEjercicio = findZone(reopened, 'ejercicio');
+
+  assertEqual(reopenedEjercicio.status, 'Pausada');
+  assertEqual(reopenedEjercicio.accumulatedSeconds, 600);
+  assertEqual(reopenedEjercicio.lastStartedAt, null);
+  assertEqual(completedZoneCount(reopened), 0);
 }
 
 {

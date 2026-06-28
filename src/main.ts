@@ -4,6 +4,7 @@ import {
   finishZone,
   getDisplaySeconds,
   pauseZone,
+  reopenZone,
   startZone,
   type ZoneProgress,
   mergeSavedState,
@@ -61,7 +62,7 @@ function formatStudentDate(date: Date): string {
 
 function getActionLabel(zone: ZoneProgress): string {
   if (zone.status === 'En progreso') return '⏸️ Pausar';
-  if (zone.status === 'Terminada') return '🔁 Revisar';
+  if (zone.status === 'Terminada') return '⏱️ Trabajar más';
   return '▶️ Empezar';
 }
 
@@ -110,6 +111,15 @@ function getModeLabel(definition: ZoneDefinition): string {
 
 function renderCompletionControl(definition: ZoneDefinition, zone: ZoneProgress, progressPercent: number): string {
   const isFinished = zone.status === 'Terminada';
+
+  if (isFinished) {
+    return `
+      <div class="done-stamp" aria-label="Zona completada por hoy">
+        <span aria-hidden="true">✅</span>
+        <strong>¡Lista por hoy!</strong>
+      </div>
+    `;
+  }
   if (definition.completionMode === 'checkbox') {
     return `
       <label class="checkbox-finish ${isFinished ? 'checkbox-finish--checked' : ''}" data-action="finish" data-zone-id="${zone.id}">
@@ -128,6 +138,23 @@ function renderCompletionControl(definition: ZoneDefinition, zone: ZoneProgress,
 
 function renderZoneActions(definition: ZoneDefinition, zone: ZoneProgress): string {
   const isFinished = zone.status === 'Terminada';
+
+  if (isFinished) {
+    const returnAction = definition.completionMode === 'checkbox' ? 'reopen' : 'primary';
+    const returnLabel = definition.completionMode === 'checkbox' ? '↩️ Volver a abrir' : '↩️ Volver y trabajar más';
+
+    return `
+      <div class="zone-actions zone-actions--finished">
+        <button class="primary-action primary-action--more-time" type="button" data-action="${returnAction}" data-zone-id="${zone.id}">
+          ${returnLabel}
+        </button>
+        <a class="assignment-link" href="${escapeHtml(definition.linkUrl)}" target="_blank" rel="noopener noreferrer">
+          📂 Abrir tarea
+        </a>
+      </div>
+    `;
+  }
+
   if (definition.completionMode === 'checkbox') {
     return `
       <div class="zone-actions zone-actions--checkbox">
@@ -179,7 +206,7 @@ function renderZoneCard(zone: ZoneProgress): string {
         </div>
       </div>
       ${isRunning ? '<p class="active-badge">🔥 Estoy aquí</p>' : ''}
-      ${isFinished ? '<p class="confetti-badge" aria-label="Zona terminada">✨ ¡Buen trabajo! ✨</p>' : ''}
+      ${isFinished ? '<p class="confetti-badge" aria-label="Zona terminada">✨ ¡Buen trabajo! La tarjeta se volteó.</p>' : ''}
       ${renderCompletionControl(definition, zone, progressPercent)}
       <dl class="zone-details">
         <div>
@@ -260,6 +287,10 @@ app.addEventListener('click', (event) => {
 
   if (action === 'finish') {
     updateState(finishZone(state, zoneId, Date.now()));
+  }
+
+  if (action === 'reopen') {
+    updateState(reopenZone(state, zoneId));
   }
 });
 
