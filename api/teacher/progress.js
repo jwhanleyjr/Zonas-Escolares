@@ -1,4 +1,4 @@
-import { escapeHtml, getSchoolDate, page, readForm, redirect, requireTeacher, sendHtml } from './_shared.js';
+import { escapeHtml, getSchoolDate, page, platformByZone, platformLabels, readForm, redirect, requireTeacher, sendHtml } from './_shared.js';
 
 export const zoneLabels = {
   lectura: 'Lectura',
@@ -11,19 +11,6 @@ export const zoneLabels = {
 
 const zoneIds = new Set(Object.keys(zoneLabels));
 const confirmationActions = new Set(['confirm', 'unconfirm']);
-const platformLabels = {
-  raz_espanol: 'Raz Español',
-  typingclub: 'TypingClub',
-  ixl: 'IXL',
-  ellii: 'Ellii',
-};
-const platformByZone = {
-  lectura: 'raz_espanol',
-  mecanografia: 'typingclub',
-  matematicas: 'ixl',
-  ingles: 'ellii',
-};
-
 function minutes(seconds) {
   return `${Math.floor(Number(seconds ?? 0) / 60)} min`;
 }
