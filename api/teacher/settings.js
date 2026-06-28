@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+
 import { escapeHtml, page, readForm, redirect, requireTeacher, sendHtml, validateUrl } from './_shared.js';
 
 export const zones = [
@@ -26,6 +28,29 @@ const defaultSettings = {
 
 const zoneIds = new Set(zones.map(([zone]) => zone));
 const completionModeIds = new Set(completionModes.map(([mode]) => mode));
+
+function safeDiagnosticValue(value) {
+  const text = String(value ?? '').trim();
+  return text.length > 280 ? `${text.slice(0, 277)}...` : text;
+}
+
+export function formatSaveError(error, context = {}) {
+  const parts = ['No pudimos guardar. Intenta otra vez.'];
+  const details = [];
+  const reference = context.reference ?? randomUUID();
+
+  details.push(`Referencia: ${reference}`);
+  if (context.studentName) details.push(`Estudiante: ${context.studentName}`);
+  if (context.rowCount !== undefined) details.push(`Filas preparadas: ${context.rowCount}`);
+  if (error?.code) details.push(`Código: ${safeDiagnosticValue(error.code)}`);
+  if (error?.message) details.push(`Mensaje: ${safeDiagnosticValue(error.message)}`);
+  if (error?.details) details.push(`Detalles: ${safeDiagnosticValue(error.details)}`);
+  if (error?.hint) details.push(`Sugerencia: ${safeDiagnosticValue(error.hint)}`);
+
+  if (details.length) parts.push(`Detalles para soporte: ${details.join(' | ')}`);
+  return parts.join(' ');
+}
+
 
 function fieldName(studentId, zone, field) {
   return `${field}:${studentId}:${zone}`;
@@ -76,6 +101,14 @@ function renderStudentOptions(students, selectedStudentId) {
   return students.map((student) => `<option value="${escapeHtml(student.id)}" ${student.id === selectedStudentId ? 'selected' : ''}>${escapeHtml(student.display_name)}</option>`).join('');
 }
 
+function renderMessage(message) {
+  if (!message) return '';
+  const className = message.kind === 'error' ? 'teacher-error' : 'teacher-success';
+  const lines = String(message.text).split(' Detalles para soporte: ');
+  if (lines.length === 1) return `<p class="${className}">${escapeHtml(message.text)}</p>`;
+  return `<div class="${className}"><p>${escapeHtml(lines[0])}</p><p><small>Detalles para soporte: ${escapeHtml(lines[1])}</small></p></div>`;
+}
+
 function renderForm(students, selectedStudentId, settings, message) {
   if (!students.length) return '<section class="teacher-panel"><p>No hay estudiantes activos.</p><p><a class="teacher-button" href="/teacher/students">Agregar estudiantes</a></p></section>';
 
@@ -89,7 +122,7 @@ function renderForm(students, selectedStudentId, settings, message) {
     return `<div class="teacher-setting-row"><strong>${escapeHtml(label)}</strong><label>Minutos meta<input name="${escapeHtml(fieldName(selectedStudent.id, zone, 'target_minutes'))}" inputmode="numeric" pattern="[0-9]*" value="${escapeHtml(minutes)}" placeholder="Vacío"></label><label>Modo<select name="${escapeHtml(fieldName(selectedStudent.id, zone, 'completion_mode'))}">${renderModeOptions(mode)}</select></label><label>Enlace de tarea<input name="${escapeHtml(fieldName(selectedStudent.id, zone, 'link_url'))}" type="url" value="${escapeHtml(linkUrl)}" placeholder="https://..."></label></div>`;
   }).join('');
 
-  return `<section class="teacher-panel"><form class="teacher-form" method="get"><label>Estudiante<select name="student_id" onchange="this.form.submit()">${renderStudentOptions(students, selectedStudent.id)}</select></label><noscript><button class="teacher-button teacher-button--secondary" type="submit">Ver estudiante</button></noscript></form></section><form class="teacher-form" method="post"><input type="hidden" name="selected_student_id" value="${escapeHtml(selectedStudent.id)}">${message ? `<p class="${message.kind === 'error' ? 'teacher-error' : 'teacher-success'}">${escapeHtml(message.text)}</p>` : ''}<p>Escribe minutos positivos o deja el espacio vacío. Elige cómo se completa cada zona y, si hace falta, agrega un enlace de tarea para este estudiante.</p><section class="teacher-panel"><h2>${escapeHtml(selectedStudent.display_name)}</h2><div class="teacher-settings-grid">${zoneRows}</div></section><button class="teacher-button" type="submit">Guardar cambios</button></form>`;
+  return `<section class="teacher-panel"><form class="teacher-form" method="get"><label>Estudiante<select name="student_id" onchange="this.form.submit()">${renderStudentOptions(students, selectedStudent.id)}</select></label><noscript><button class="teacher-button teacher-button--secondary" type="submit">Ver estudiante</button></noscript></form></section><form class="teacher-form" method="post"><input type="hidden" name="selected_student_id" value="${escapeHtml(selectedStudent.id)}">${renderMessage(message)}<p>Escribe minutos positivos o deja el espacio vacío. Elige cómo se completa cada zona y, si hace falta, agrega un enlace de tarea para este estudiante.</p><section class="teacher-panel"><h2>${escapeHtml(selectedStudent.display_name)}</h2><div class="teacher-settings-grid">${zoneRows}</div></section><button class="teacher-button" type="submit">Guardar cambios</button></form>`;
 }
 
 async function getActiveStudents(supabase) {
@@ -121,8 +154,10 @@ export default async function handler(request, response) {
     } else if (result.rows.length) {
       const { error } = await supabase.from('student_zone_settings').upsert(result.rows, { onConflict: 'student_id,zone' });
       if (error) {
-        console.error('Zone settings upsert failed', error);
-        message = { kind: 'error', text: 'No pudimos guardar. Intenta otra vez.' };
+        const reference = randomUUID();
+        const selectedStudent = activeStudents.find((student) => student.id === selectedStudentId);
+        console.error('Zone settings upsert failed', { reference, selectedStudentId, rowCount: result.rows.length, error });
+        message = { kind: 'error', text: formatSaveError(error, { reference, studentName: selectedStudent?.display_name, rowCount: result.rows.length }) };
       } else {
         message = { kind: 'success', text: 'Cambios guardados.' };
       }

@@ -1,5 +1,5 @@
 import { strict as assert } from 'node:assert';
-import { completionModes, validateSettingsForm, zones } from './settings.js';
+import { completionModes, formatSaveError, validateSettingsForm, zones } from './settings.js';
 
 const students = [{ id: 'student-1', display_name: 'Ana' }];
 const twoStudents = [...students, { id: 'student-2', display_name: 'Ben' }];
@@ -56,6 +56,18 @@ assert.deepEqual(completionModes.map(([mode]) => mode), ['timed', 'task', 'check
   const result = validateSettingsForm(form, twoStudents);
   assert.match(result.errors[0], /estudiante válido/i, 'unknown selected student is rejected');
   assert.equal(result.rows.length, 0, 'unknown selected student produces no rows');
+}
+
+
+{
+  const message = formatSaveError({ code: '23514', message: 'violates check constraint', details: 'Failing row contains...', hint: 'Check link_url.' }, { reference: 'test-ref', studentName: 'Ana', rowCount: 6 });
+  assert.match(message, /Referencia: test-ref/, 'save error includes support reference');
+  assert.match(message, /Estudiante: Ana/, 'save error includes selected student name');
+  assert.match(message, /Filas preparadas: 6/, 'save error includes prepared row count');
+  assert.match(message, /Código: 23514/, 'save error includes Supabase error code');
+  assert.match(message, /Mensaje: violates check constraint/, 'save error includes Supabase error message');
+  assert.match(message, /Detalles: Failing row contains/, 'save error includes Supabase error details');
+  assert.match(message, /Sugerencia: Check link_url\./, 'save error includes Supabase error hint');
 }
 
 console.log('Teacher settings validation tests passed.');
