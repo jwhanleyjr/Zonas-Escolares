@@ -72,6 +72,13 @@ h1 {
   letter-spacing: -0.05em;
 }
 
+.hero__date {
+  margin: 0.5rem 0 0;
+  color: #7a3bd1;
+  font-size: clamp(1.15rem, 2vw, 1.45rem);
+  font-weight: 1000;
+}
+
 .hero__text {
   max-width: 45rem;
   margin: 1rem 0 0;
