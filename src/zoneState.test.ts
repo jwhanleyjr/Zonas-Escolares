@@ -97,4 +97,11 @@ function findZone(state: ZoneState, zoneId: string): ZoneProgress {
   assertEqual(clasesDiversas.status, 'Pausada');
 }
 
+{
+  const ejercicio = zoneDefinitions.find((definition) => definition.id === 'ejercicio');
+
+  assertEqual(ejercicio?.completionMode, 'checkbox');
+  assertEqual(ejercicio?.targetMinutes, null);
+}
+
 console.log('Zone timer and state-transition tests passed.');

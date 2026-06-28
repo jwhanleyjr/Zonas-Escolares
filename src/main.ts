@@ -108,6 +108,51 @@ function getModeLabel(definition: ZoneDefinition): string {
   return 'Tiempo';
 }
 
+function renderCompletionControl(definition: ZoneDefinition, zone: ZoneProgress, progressPercent: number): string {
+  const isFinished = zone.status === 'Terminada';
+  if (definition.completionMode === 'checkbox') {
+    return `
+      <label class="checkbox-finish ${isFinished ? 'checkbox-finish--checked' : ''}" data-action="finish" data-zone-id="${zone.id}">
+        <input type="checkbox" ${isFinished ? 'checked disabled' : ''}>
+        <span>✅ Ya lo hice</span>
+      </label>
+    `;
+  }
+
+  return `
+    <div class="progress-ring" style="--progress: ${progressPercent}%" aria-label="${progressPercent}% de la meta registrada">
+      <span>${progressPercent}%</span>
+    </div>
+  `;
+}
+
+function renderZoneActions(definition: ZoneDefinition, zone: ZoneProgress): string {
+  const isFinished = zone.status === 'Terminada';
+  if (definition.completionMode === 'checkbox') {
+    return `
+      <div class="zone-actions zone-actions--checkbox">
+        <a class="assignment-link" href="${definition.linkUrl}" target="_blank" rel="noopener noreferrer">
+          📂 Abrir tarea
+        </a>
+      </div>
+    `;
+  }
+
+  return `
+    <div class="zone-actions">
+      <button class="primary-action" type="button" data-action="primary" data-zone-id="${zone.id}">
+        ${getActionLabel(zone)}
+      </button>
+      <button class="done-action" type="button" data-action="finish" data-zone-id="${zone.id}" ${isFinished ? 'disabled' : ''}>
+        ✅ Terminé
+      </button>
+      <a class="assignment-link" href="${definition.linkUrl}" target="_blank" rel="noopener noreferrer">
+        📂 Abrir tarea
+      </a>
+    </div>
+  `;
+}
+
 function renderProgressStars(completed: number): string {
   return activeZoneDefinitions
     .map((_, index) => `<span class="star ${index < completed ? 'star--filled' : ''}" aria-hidden="true">★</span>`)
@@ -135,9 +180,7 @@ function renderZoneCard(zone: ZoneProgress): string {
       </div>
       ${isRunning ? '<p class="active-badge">🔥 Estoy aquí</p>' : ''}
       ${isFinished ? '<p class="confetti-badge" aria-label="Zona terminada">✨ ¡Buen trabajo! ✨</p>' : ''}
-      <div class="progress-ring" style="--progress: ${progressPercent}%" aria-label="${progressPercent}% de la meta registrada">
-        <span>${progressPercent}%</span>
-      </div>
+      ${renderCompletionControl(definition, zone, progressPercent)}
       <dl class="zone-details">
         <div>
           <dt>🎯 Meta</dt>
@@ -156,17 +199,7 @@ function renderZoneCard(zone: ZoneProgress): string {
           <dd><span class="status status--${zone.status.toLowerCase().replaceAll(' ', '-')}">${getStatusLabel(zone)}</span></dd>
         </div>
       </dl>
-      <div class="zone-actions">
-        <button class="primary-action" type="button" data-action="primary" data-zone-id="${zone.id}">
-          ${getActionLabel(zone)}
-        </button>
-        <button class="done-action" type="button" data-action="finish" data-zone-id="${zone.id}" ${isFinished ? 'disabled' : ''}>
-          ✅ Terminé
-        </button>
-        <a class="assignment-link" href="${definition.linkUrl}" target="_blank" rel="noopener noreferrer">
-          📂 Abrir tarea
-        </a>
-      </div>
+      ${renderZoneActions(definition, zone)}
     </article>
   `;
 }
