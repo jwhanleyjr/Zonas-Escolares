@@ -1,6 +1,15 @@
 import { getSchoolDate, page, redirect, requireTeacher, sendHtml } from './_shared.js';
 
-const zones = ['lectura', 'mecanografia', 'matematicas', 'clases_diversas', 'ingles', 'ejercicio'];
+const zoneLabels = {
+  lectura: 'Lectura',
+  mecanografia: 'Mecanografía',
+  matematicas: 'Matemáticas',
+  clases_diversas: 'Clases Diversas',
+  ingles: 'Inglés',
+  ejercicio: 'Ejercicio',
+};
+
+const zones = Object.keys(zoneLabels);
 
 export default async function handler(request, response) {
   const auth = await requireTeacher(request, response);
@@ -29,7 +38,9 @@ export default async function handler(request, response) {
     ['/teacher/students', 'Estudiantes', 'Agregar estudiantes y editar sus enlaces de plataformas.'],
     ['/teacher/kami', 'Clases Diversas', 'Asignaciones de Kami por fecha.'],
     ['/teacher/progress', 'Progreso de hoy', 'Tiempo de trabajo registrado y confirmación por plataforma.'],
+    ['/teacher/progress?review=pending', 'Pendientes de confirmación', 'Ver solamente zonas que todavía necesitan confirmación.'],
   ].map(([href, title, text]) => `<a class="teacher-card" href="${href}"><strong>${title}</strong><span>${text}</span></a>`).join('');
+  const zoneReviewLinks = Object.entries(zoneLabels).map(([zone, label]) => `<a class="teacher-card" href="/teacher/progress?zone=${zone}&review=pending"><strong>${label}</strong><span>Confirmar pendientes solo de esta zona.</span></a>`).join('');
 
-  return sendHtml(response, page('Panel del maestro', profile, `<section class="teacher-panel teacher-overview"><h2>Resumen de hoy</h2><div class="summary-grid">${cards}</div></section><section class="teacher-panel teacher-overview"><h2>Acciones frecuentes</h2><div class="teacher-grid">${links}</div></section>`));
+  return sendHtml(response, page('Panel del maestro', profile, `<section class="teacher-panel teacher-overview"><h2>Resumen de hoy</h2><div class="summary-grid">${cards}</div></section><section class="teacher-panel teacher-overview"><h2>Acciones frecuentes</h2><div class="teacher-grid">${links}</div></section><section class="teacher-panel teacher-overview"><h2>Confirmar por zona</h2><div class="teacher-grid">${zoneReviewLinks}</div></section>`));
 }
