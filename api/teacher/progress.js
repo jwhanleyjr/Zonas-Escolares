@@ -10,7 +10,7 @@ export const zoneLabels = {
 };
 
 const zoneIds = new Set(Object.keys(zoneLabels));
-const confirmationActions = new Set(['confirm', 'unconfirm']);
+const confirmationActions = new Set(['confirm', 'unconfirm', 'mark_incomplete', 'mark_not_started']);
 function minutes(seconds) {
   return `${Math.floor(Number(seconds ?? 0) / 60)} min`;
 }
@@ -56,6 +56,23 @@ export function validateConfirmationForm(form, students) {
   return { studentId, zone, action, filter, zoneFilter, reviewFilter, workDate, confirmed: action === 'confirm', errors };
 }
 
+
+export function progressUpdateForAction(action, confirmed) {
+  if (action === 'mark_incomplete') {
+    return { status: 'paused', teacher_confirmed: false, active_started_at: null };
+  }
+  if (action === 'mark_not_started') {
+    return { status: 'not_started', teacher_confirmed: false, recorded_seconds: 0, active_started_at: null };
+  }
+  return { teacher_confirmed: confirmed };
+}
+
+function statusMessageForAction(action) {
+  if (action === 'mark_incomplete') return 'No pudimos marcar la zona como incompleta.';
+  if (action === 'mark_not_started') return 'No pudimos marcar la zona como no iniciada.';
+  return 'No pudimos guardar la confirmación.';
+}
+
 function linkByStudentAndZone(platformLinks, zoneSettings) {
   const map = new Map();
   for (const setting of zoneSettings ?? []) {
@@ -71,30 +88,57 @@ function linkByStudentAndZone(platformLinks, zoneSettings) {
   return map;
 }
 
-function renderZoneConfirmation(student, progressRows, links, filter, zoneFilter, reviewFilter, workDate) {
-  const byZone = new Map(progressRows.map((row) => [row.zone, row]));
-  const zonesToShow = Object.entries(zoneLabels).filter(([zone]) => reviewFilter !== 'pending' || byZone.get(zone)?.teacher_confirmed !== true);
-  return zonesToShow.map(([zone, label]) => {
-    const progress = byZone.get(zone);
-    const isConfirmed = progress?.teacher_confirmed === true;
-    const link = links.get(`${student.id}:${zone}`);
-    const action = isConfirmed ? 'unconfirm' : 'confirm';
-    const buttonLabel = isConfirmed ? 'Quitar confirmación' : 'Confirmar completado';
-    const badge = isConfirmed ? '<span class="confirm-badge confirm-badge--yes">Confirmado</span>' : '<span class="confirm-badge">Sin confirmar</span>';
-    return `<div class="confirmation-zone"><div><strong>${escapeHtml(label)}</strong><span>${statusLabel(progress?.status)} · ${minutes(progress?.recorded_seconds)}</span>${link ? `<a href="${escapeHtml(link.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(link.label)}</a>` : '<span>Sin enlace de plataforma</span>'}</div><form method="post"><input type="hidden" name="filter" value="${escapeHtml(filter)}"><input type="hidden" name="zone_filter" value="${escapeHtml(zoneFilter)}"><input type="hidden" name="review_filter" value="${escapeHtml(reviewFilter)}"><input type="hidden" name="work_date" value="${escapeHtml(workDate)}"><input type="hidden" name="student_id" value="${escapeHtml(student.id)}"><input type="hidden" name="zone" value="${escapeHtml(zone)}"><button class="teacher-button ${isConfirmed ? 'teacher-button--secondary' : ''}" name="action" value="${action}" type="submit">${buttonLabel}</button></form>${badge}</div>`;
-  }).filter(Boolean).join('');
+
+export function completedProgressByZone(students, progressRows, reviewFilter) {
+  const studentNames = new Map(students.map((student) => [student.id, student.display_name]));
+  const grouped = new Map(Object.keys(zoneLabels).map((zone) => [zone, []]));
+
+  for (const row of progressRows ?? []) {
+    if (row.status !== 'finished') continue;
+    if (reviewFilter === 'pending' && row.teacher_confirmed === true) continue;
+    if (!grouped.has(row.zone)) continue;
+    grouped.get(row.zone).push({ ...row, student_name: studentNames.get(row.student_id) ?? 'Estudiante' });
+  }
+
+  for (const rows of grouped.values()) {
+    rows.sort((a, b) => String(b.work_date).localeCompare(String(a.work_date)) || a.student_name.localeCompare(b.student_name));
+  }
+
+  return grouped;
 }
 
+function renderProgressActionForm(studentId, zone, rowWorkDate, filter, zoneFilter, reviewFilter, action, buttonLabel, secondary = false) {
+  return `<form method="post" class="inline-confirm-form"><input type="hidden" name="filter" value="${escapeHtml(filter)}"><input type="hidden" name="zone_filter" value="${escapeHtml(zoneFilter)}"><input type="hidden" name="review_filter" value="${escapeHtml(reviewFilter)}"><input type="hidden" name="work_date" value="${escapeHtml(rowWorkDate)}"><input type="hidden" name="student_id" value="${escapeHtml(studentId)}"><input type="hidden" name="zone" value="${escapeHtml(zone)}"><button class="teacher-button ${secondary ? 'teacher-button--secondary' : ''}" name="action" value="${action}" type="submit">${buttonLabel}</button></form>`;
+}
+
+function renderReviewActions(studentId, zone, rowWorkDate, filter, zoneFilter, reviewFilter, isConfirmed) {
+  const confirmationAction = isConfirmed ? 'unconfirm' : 'confirm';
+  const confirmationLabel = isConfirmed ? 'Quitar confirmación' : 'Confirmar completado';
+  return `<div class="confirmation-actions">${renderProgressActionForm(studentId, zone, rowWorkDate, filter, zoneFilter, reviewFilter, confirmationAction, confirmationLabel, isConfirmed)}${renderProgressActionForm(studentId, zone, rowWorkDate, filter, zoneFilter, reviewFilter, 'mark_incomplete', 'Marcar incompleta', true)}${renderProgressActionForm(studentId, zone, rowWorkDate, filter, zoneFilter, reviewFilter, 'mark_not_started', 'Marcar no iniciada', true)}</div>`;
+}
+
+function renderGroupedConfirmationReport(students, progressRows, links, filter, zoneFilter, reviewFilter) {
+  const grouped = completedProgressByZone(students, progressRows, reviewFilter);
+  return Object.entries(zoneLabels).map(([zone, label]) => {
+    const zoneRows = grouped.get(zone) ?? [];
+    if (!zoneRows.length) return '';
+    const rows = zoneRows.map((progress) => {
+      const isConfirmed = progress.teacher_confirmed === true;
+      const link = links.get(`${progress.student_id}:${zone}`);
+      const badge = isConfirmed ? '<span class="confirm-badge confirm-badge--yes">Confirmado</span>' : '<span class="confirm-badge">Sin confirmar</span>';
+      return `<tr><td>${escapeHtml(progress.work_date)}</td><td>${escapeHtml(progress.student_name)}</td><td>${minutes(progress.recorded_seconds)}</td><td>${link ? `<a href="${escapeHtml(link.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(link.label)}</a>` : 'Sin enlace de plataforma'}</td><td>${renderReviewActions(progress.student_id, zone, progress.work_date, filter, zoneFilter, reviewFilter, isConfirmed)}</td><td>${badge}</td></tr>`;
+    }).join('');
+    return `<section class="confirmation-zone-group"><h3>${escapeHtml(label)}</h3><table class="teacher-table"><thead><tr><th>Fecha</th><th>Estudiante</th><th>Tiempo registrado</th><th>Plataforma</th><th>Confirmación</th><th>Resultado</th></tr></thead><tbody>${rows}</tbody></table></section>`;
+  }).join('');
+}
 
 function renderZoneReviewRow(student, progressRows, links, filter, zoneFilter, reviewFilter, workDate) {
   const progress = progressRows.find((row) => row.zone === zoneFilter);
-  const label = zoneLabels[zoneFilter] ?? zoneFilter;
   const isConfirmed = progress?.teacher_confirmed === true;
   const link = links.get(`${student.id}:${zoneFilter}`);
-  const action = isConfirmed ? 'unconfirm' : 'confirm';
-  const buttonLabel = isConfirmed ? 'Quitar confirmación' : `Confirmar ${label}`;
+  const rowWorkDate = progress?.work_date ?? workDate;
   const badge = isConfirmed ? '<span class="confirm-badge confirm-badge--yes">Confirmado</span>' : '<span class="confirm-badge">Sin confirmar</span>';
-  return `<tr><td>${escapeHtml(student.display_name)}</td><td>${statusLabel(progress?.status)}</td><td>${minutes(progress?.recorded_seconds)}</td><td>${link ? `<a href="${escapeHtml(link.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(link.label)}</a>` : 'Sin enlace de plataforma'}</td><td><form method="post" class="inline-confirm-form"><input type="hidden" name="filter" value="${escapeHtml(filter)}"><input type="hidden" name="zone_filter" value="${escapeHtml(zoneFilter)}"><input type="hidden" name="review_filter" value="${escapeHtml(reviewFilter)}"><input type="hidden" name="work_date" value="${escapeHtml(workDate)}"><input type="hidden" name="student_id" value="${escapeHtml(student.id)}"><input type="hidden" name="zone" value="${escapeHtml(zoneFilter)}"><button class="teacher-button ${isConfirmed ? 'teacher-button--secondary' : ''}" name="action" value="${action}" type="submit">${buttonLabel}</button></form></td><td>${badge}</td></tr>`;
+  return `<tr><td>${escapeHtml(student.display_name)}</td><td>${statusLabel(progress?.status)}</td><td>${minutes(progress?.recorded_seconds)}</td><td>${link ? `<a href="${escapeHtml(link.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(link.label)}</a>` : 'Sin enlace de plataforma'}</td><td>${renderReviewActions(student.id, zoneFilter, rowWorkDate, filter, zoneFilter, reviewFilter, isConfirmed)}</td><td>${badge}</td></tr>`;
 }
 
 export default async function handler(request, response) {
@@ -124,10 +168,11 @@ export default async function handler(request, response) {
     if (result.errors.length) {
       message = { kind: 'error', text: result.errors[0] };
     } else {
-      const { error } = await supabase.from('zone_progress').upsert({ student_id: result.studentId, work_date: workDate, zone: result.zone, teacher_confirmed: result.confirmed }, { onConflict: 'student_id,work_date,zone' });
+      const update = progressUpdateForAction(result.action, result.confirmed);
+      const { error } = await supabase.from('zone_progress').update(update).eq('student_id', result.studentId).eq('work_date', workDate).eq('zone', result.zone);
       if (error) {
-        console.error('Teacher confirmation update failed', error);
-        message = { kind: 'error', text: 'No pudimos guardar la confirmación.' };
+        console.error('Teacher progress update failed', error);
+        message = { kind: 'error', text: statusMessageForAction(result.action) };
       } else {
         return redirectWithFilters(response, filter, zoneFilter, reviewFilter, workDate);
       }
@@ -136,8 +181,11 @@ export default async function handler(request, response) {
 
   const students = filter === 'active' ? studentsForValidation.filter((student) => student.active) : filter === 'all' ? studentsForValidation : studentsForValidation.filter((student) => student.id === filter);
   const studentIds = students.map((student) => student.id);
+  const progressQuery = supabase.from('zone_progress').select('student_id, work_date, zone, recorded_seconds, status, teacher_confirmed').in('student_id', studentIds);
+  if (zoneFilter !== 'all') progressQuery.eq('zone', zoneFilter);
+
   const [{ data: progress, error }, { data: platformLinks }, { data: zoneSettings }] = await Promise.all([
-    studentIds.length ? supabase.from('zone_progress').select('student_id, zone, recorded_seconds, status, teacher_confirmed').eq('work_date', workDate).in('student_id', studentIds) : { data: [], error: null },
+    studentIds.length ? progressQuery.eq('status', 'finished').order('zone').order('work_date', { ascending: false }) : { data: [], error: null },
     studentIds.length ? supabase.from('student_platform_links').select('student_id, platform, url').in('student_id', studentIds) : { data: [], error: null },
     studentIds.length ? supabase.from('student_zone_settings').select('student_id, zone, link_url').in('student_id', studentIds) : { data: [], error: null },
   ]);
@@ -153,21 +201,18 @@ export default async function handler(request, response) {
   const options = [`<option value="active" ${filter === 'active' ? 'selected' : ''}>Estudiantes activos</option>`, `<option value="all" ${filter === 'all' ? 'selected' : ''}>Todos</option>`, ...studentsForValidation.map((s) => `<option value="${escapeHtml(s.id)}" ${filter === s.id ? 'selected' : ''}>${escapeHtml(s.display_name)}</option>`)].join('');
   const zoneOptions = [`<option value="all" ${zoneFilter === 'all' ? 'selected' : ''}>Todas las zonas</option>`, ...Object.entries(zoneLabels).map(([zone, label]) => `<option value="${escapeHtml(zone)}" ${zoneFilter === zone ? 'selected' : ''}>${escapeHtml(label)}</option>`)].join('');
   const reviewOptions = [`<option value="all" ${reviewFilter === 'all' ? 'selected' : ''}>Mostrar todas</option>`, `<option value="pending" ${reviewFilter === 'pending' ? 'selected' : ''}>Solo pendientes de confirmación</option>`].join('');
-  const rows = students.map((s) => {
+  const rows = zoneFilter === 'all' ? '' : students.map((s) => {
     const list = byStudent.get(s.id) ?? [];
-    if (zoneFilter !== 'all') {
-      const selectedZoneProgress = list.find((row) => row.zone === zoneFilter);
-      if (reviewFilter === 'pending' && selectedZoneProgress?.teacher_confirmed === true) return '';
-      return renderZoneReviewRow(s, list, links, filter, zoneFilter, reviewFilter, workDate);
-    }
-    const active = list.find((p) => p.status === 'in_progress');
-    const confirmed = list.filter((p) => p.teacher_confirmed).length;
-    if (reviewFilter === 'pending' && confirmed === Object.keys(zoneLabels).length) return '';
-    return `<tr><td>${escapeHtml(s.display_name)}</td><td>${active ? escapeHtml(zoneLabels[active.zone] ?? active.zone) : 'Ninguna'}</td><td>${list.filter((p) => p.status === 'finished').length}</td><td>${confirmed} de ${Object.keys(zoneLabels).length}</td><td><div class="confirmation-list">${renderZoneConfirmation(s, list, links, filter, zoneFilter, reviewFilter, workDate) || 'Todas las zonas mostradas están confirmadas.'}</div></td></tr>`;
+    const selectedZoneProgress = list.find((row) => row.zone === zoneFilter);
+    if (!selectedZoneProgress) return '';
+    if (reviewFilter === 'pending' && selectedZoneProgress.teacher_confirmed === true) return '';
+    return renderZoneReviewRow(s, list, links, filter, zoneFilter, reviewFilter, workDate);
   }).join('');
+  const groupedReport = zoneFilter === 'all' ? renderGroupedConfirmationReport(students, progress ?? [], links, filter, zoneFilter, reviewFilter) : '';
   const messageHtml = message ? `<p class="${message.kind === 'error' ? 'teacher-error' : 'teacher-status'}">${escapeHtml(message.text)}</p>` : '';
-  const heading = zoneFilter === 'all' ? 'Confirmación por estudiante' : `Confirmar ${zoneLabels[zoneFilter]} por zona`;
-  const tableHead = zoneFilter === 'all' ? '<tr><th>Estudiante</th><th>Zona activa</th><th>Zonas terminadas</th><th>Confirmadas</th><th>Confirmación por zona y plataforma</th></tr>' : '<tr><th>Estudiante</th><th>Estado</th><th>Tiempo registrado</th><th>Plataforma</th><th>Confirmación</th><th>Resultado</th></tr>';
-  const body = `<section class="teacher-panel"><p>Fecha escolar: ${workDate}. El tiempo mostrado es <strong>tiempo de trabajo registrado</strong>, no prueba de finalización académica. Usa Confirmar completado solo después de revisar la plataforma o tarea correspondiente.</p>${messageHtml}<form class="teacher-filter-form"><label>Fecha<input name="date" type="date" value="${escapeHtml(workDate)}"></label><label>Estudiantes<select name="student" onchange="this.form.submit()">${options}</select></label><label>Revisar por zona<select name="zone" onchange="this.form.submit()">${zoneOptions}</select></label><label>Confirmación<select name="review" onchange="this.form.submit()">${reviewOptions}</select></label><button class="teacher-button teacher-button--secondary" type="submit">Ver progreso</button></form><h2>${escapeHtml(heading)}</h2>${rows ? `<table class="teacher-table"><thead>${tableHead}</thead><tbody>${rows}</tbody></table>` : '<p>No hay estudiantes para mostrar.</p>'}</section>`;
+  const heading = zoneFilter === 'all' ? 'Confirmación por zona' : `Confirmar ${zoneLabels[zoneFilter]} por zona`;
+  const tableHead = '<tr><th>Estudiante</th><th>Estado</th><th>Tiempo registrado</th><th>Plataforma</th><th>Confirmación</th><th>Resultado</th></tr>';
+  const reportHtml = zoneFilter === 'all' ? groupedReport : (rows ? `<table class="teacher-table"><thead>${tableHead}</thead><tbody>${rows}</tbody></table>` : '<p>No hay zonas completadas para mostrar.</p>');
+  const body = `<section class="teacher-panel"><p>El reporte muestra solo zonas que el estudiante marcó como terminadas. El tiempo mostrado es <strong>tiempo de trabajo registrado</strong>, no prueba de finalización académica. Usa Confirmar completado solo después de revisar la plataforma o tarea correspondiente.</p>${messageHtml}<form class="teacher-filter-form"><label>Estudiantes<select name="student" onchange="this.form.submit()">${options}</select></label><label>Revisar por zona<select name="zone" onchange="this.form.submit()">${zoneOptions}</select></label><label>Confirmación<select name="review" onchange="this.form.submit()">${reviewOptions}</select></label><button class="teacher-button teacher-button--secondary" type="submit">Ver progreso</button></form><h2>${escapeHtml(heading)}</h2>${reportHtml || '<p>No hay zonas completadas para mostrar.</p>'}</section>`;
   sendHtml(response, page('Progreso', profile, body));
 }

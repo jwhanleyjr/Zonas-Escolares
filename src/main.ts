@@ -13,6 +13,8 @@ import {
   type StudentZoneSetting,
   type ZoneDefinition,
   type ZoneState,
+  type WeeklyProgressRow,
+  summarizeWeeklyProgress,
   applyZoneSettings,
   zoneDefinitions,
 } from './zones.js';
@@ -31,7 +33,6 @@ let currentStudentId: string | null = null;
 let currentTime = Date.now();
 let studentName = 'estudiante';
 const dailyGoal = 6;
-type WeeklyProgressRow = { status?: string | null; teacher_confirmed?: boolean | null };
 type WeeklyProgressSummary = { weekStart?: string; weekEnd?: string; progress: WeeklyProgressRow[] };
 let weeklyProgress: WeeklyProgressSummary = { progress: [] };
 
@@ -250,14 +251,6 @@ function parseWeeklyProgress(value: unknown): WeeklyProgressSummary {
   return summary;
 }
 
-function confirmedZoneCount(): number {
-  return weeklyProgress.progress.filter((zone) => zone.status === 'finished' && zone.teacher_confirmed === true).length;
-}
-
-function weeklyFinishedZoneCount(): number {
-  return weeklyProgress.progress.filter((zone) => zone.status === 'finished').length;
-}
-
 function renderPrizeMilestones(): string {
   return prizeMilestones
     .map((milestone) => {
@@ -279,31 +272,22 @@ function renderPrizeKey(): string {
 }
 
 function renderWeeklyPoints(): string {
-  const confirmedPoints = Math.min(confirmedZoneCount(), weeklyPrizeMaxPoints);
-  const pendingPoints = Math.min(weeklyFinishedZoneCount(), weeklyPrizeMaxPoints);
+  const { confirmedPoints, pendingReviewPoints, finishedPoints } = summarizeWeeklyProgress(weeklyProgress.progress, weeklyPrizeMaxPoints);
   const confirmedPercent = (confirmedPoints / weeklyPrizeMaxPoints) * 100;
-  const pendingPercent = (pendingPoints / weeklyPrizeMaxPoints) * 100;
+  const pendingReviewPercent = (pendingReviewPoints / weeklyPrizeMaxPoints) * 100;
 
   return `
     <section class="weekly-panel" aria-label="Puntos de la semana">
       <div class="weekly-panel__header">
         <div>
           <p class="weekly-panel__eyebrow">⭐ Puntos de la semana</p>
-          <h2>${pendingPoints} de 25 puntos</h2>
+          <h2>${finishedPoints} de 25 puntos</h2>
           <p>Meta: 25 puntos. Máximo: 30 puntos.</p>
-        </div>
-        <div class="reward-box" aria-label="Recompensas">
-          <strong>🎁 Premios</strong>
-          <span>5 Caja</span>
-          <span>10 Merienda</span>
-          <span>15 Manualidades</span>
-          <span>20 Videojuegos</span>
-          <span>25 Actividad</span>
         </div>
       </div>
       <div class="weekly-bar" aria-hidden="true">
         <span class="weekly-bar__confirmed" style="width: ${confirmedPercent}%"></span>
-        <span class="weekly-bar__pending" style="width: ${pendingPercent}%"></span>
+        <span class="weekly-bar__pending" style="left: ${confirmedPercent}%; width: ${pendingReviewPercent}%"></span>
         ${renderPrizeMilestones()}
       </div>
       <div class="prize-key" aria-label="Premios por puntos">

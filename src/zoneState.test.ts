@@ -9,6 +9,7 @@ import {
   progressFromServer,
   reopenZone,
   startZone,
+  summarizeWeeklyProgress,
   type ZoneProgress,
   type ZoneState,
   zoneDefinitions,
@@ -135,6 +136,22 @@ function findZone(state: ZoneState, zoneId: string): ZoneProgress {
   assertEqual(lectura.status, 'Terminada');
   assertEqual(mecanografia.status, 'En progreso');
   assertEqual(mecanografia.lastStartedAt, Date.parse('2026-06-28T12:00:00.000Z'));
+}
+
+
+{
+  const summary = summarizeWeeklyProgress([
+    { status: 'finished', teacher_confirmed: true },
+    { status: 'finished', teacher_confirmed: true },
+    { status: 'finished', teacher_confirmed: false },
+    { status: 'finished', teacher_confirmed: null },
+    { status: 'finished' },
+    { status: 'paused', teacher_confirmed: false },
+  ], 30);
+
+  assertEqual(summary.confirmedPoints, 2);
+  assertEqual(summary.pendingReviewPoints, 3);
+  assertEqual(summary.finishedPoints, 5);
 }
 
 console.log('Zone timer and state-transition tests passed.');
