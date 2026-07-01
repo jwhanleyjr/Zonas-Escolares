@@ -33,6 +33,18 @@ export type ZoneState = {
   zones: ZoneProgress[];
 };
 
+
+export type WeeklyProgressRow = {
+  status?: string | null;
+  teacher_confirmed?: boolean | null;
+};
+
+export function summarizeWeeklyProgress(rows: WeeklyProgressRow[], maxPoints: number): { confirmedPoints: number; pendingReviewPoints: number; finishedPoints: number } {
+  const confirmedPoints = Math.min(rows.filter((zone) => zone.teacher_confirmed === true).length, maxPoints);
+  const pendingReviewPoints = Math.min(rows.filter((zone) => zone.status === 'finished' && zone.teacher_confirmed !== true).length, Math.max(0, maxPoints - confirmedPoints));
+  return { confirmedPoints, pendingReviewPoints, finishedPoints: confirmedPoints + pendingReviewPoints };
+}
+
 export type ServerZoneProgress = {
   zone: string;
   recorded_seconds: number | null;
