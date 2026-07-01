@@ -135,6 +135,16 @@ function getModeLabel(definition: ZoneDefinition): string {
 function renderCompletionControl(definition: ZoneDefinition, zone: ZoneProgress, progressPercent: number): string {
   const isFinished = zone.status === 'Terminada';
 
+  if (definition.locked) {
+    return `
+      <div class="locked-panel" aria-label="Zona bloqueada">
+        <span aria-hidden="true">🔒</span>
+        <strong>Bloqueada</strong>
+        <small>Gana puntos para abrir esta zona.</small>
+      </div>
+    `;
+  }
+
   if (isFinished) {
     return `
       <div class="done-stamp" aria-label="Zona completada por hoy">
@@ -161,6 +171,14 @@ function renderCompletionControl(definition: ZoneDefinition, zone: ZoneProgress,
 
 function renderZoneActions(definition: ZoneDefinition, zone: ZoneProgress): string {
   const isFinished = zone.status === 'Terminada';
+
+  if (definition.locked) {
+    return `
+      <div class="zone-actions">
+        <button class="locked-action" type="button" disabled>🔒 Necesita puntos</button>
+      </div>
+    `;
+  }
 
   if (isFinished) {
     const returnAction = definition.completionMode === 'checkbox' ? 'reopen' : 'primary';
@@ -209,6 +227,44 @@ function renderProgressStars(completed: number): string {
     .join('');
 }
 
+function confirmedZoneCount(): number {
+  return state.zones.filter((zone) => zone.status === 'Terminada' && zone.teacherConfirmed === true).length;
+}
+
+function renderWeeklyPoints(completed: number): string {
+  const confirmedPoints = Math.min(confirmedZoneCount(), 30);
+  const pendingPoints = Math.min(completed, 30);
+  const confirmedPercent = (confirmedPoints / 30) * 100;
+  const pendingPercent = (pendingPoints / 30) * 100;
+
+  return `
+    <section class="weekly-panel" aria-label="Puntos de la semana">
+      <div class="weekly-panel__header">
+        <div>
+          <p class="weekly-panel__eyebrow">⭐ Puntos de la semana</p>
+          <h2>${pendingPoints} de 25 puntos</h2>
+          <p>Meta: 25 puntos. Máximo: 30 puntos.</p>
+        </div>
+        <div class="reward-box" aria-label="Recompensas">
+          <strong>🎁 Premios</strong>
+          <span>Juego</span>
+          <span>Arte</span>
+          <span>Sorpresa</span>
+        </div>
+      </div>
+      <div class="weekly-bar" aria-hidden="true">
+        <span class="weekly-bar__confirmed" style="width: ${confirmedPercent}%"></span>
+        <span class="weekly-bar__pending" style="width: ${pendingPercent}%"></span>
+        <span class="weekly-bar__goal"></span>
+      </div>
+      <div class="weekly-legend">
+        <span><i class="legend-dot legend-dot--confirmed"></i> Confirmados</span>
+        <span><i class="legend-dot legend-dot--pending"></i> Terminados, esperando revisión</span>
+      </div>
+    </section>
+  `;
+}
+
 function renderZoneCard(zone: ZoneProgress): string {
   const definition = activeZoneDefinitions.find((candidate) => candidate.id === zone.id);
   if (!definition) return '';
@@ -219,17 +275,24 @@ function renderZoneCard(zone: ZoneProgress): string {
   const progressPercent = getProgressPercent(displaySeconds, definition.targetMinutes);
 
   return `
-    <article class="zone-card zone-card--${definition.theme} ${isRunning ? 'zone-card--active' : ''} ${isFinished ? 'zone-card--finished' : ''}" aria-label="Zona ${definition.name}">
-      <div class="zone-card__stripe" aria-hidden="true"></div>
-      <div class="zone-card__top">
-        <span class="zone-icon" aria-hidden="true">${definition.icon}</span>
-        <div>
-          <h2>${definition.name}</h2>
-          <p class="assignment">${definition.assignmentTitle}</p>
-        </div>
-      </div>
+    <details class="zone-card zone-card--${definition.theme} ${isRunning ? 'zone-card--active' : ''} ${isFinished ? 'zone-card--finished' : ''} ${definition.locked ? 'zone-card--locked' : ''}" aria-label="Zona ${definition.name}" ${isRunning || isFinished ? 'open' : ''}>
+      <summary class="zone-card__summary">
+        <span class="zone-card__stripe" aria-hidden="true"></span>
+        <span class="zone-card__top">
+          <span class="zone-icon" aria-hidden="true">${definition.icon}</span>
+          <span>
+            <span class="zone-title">${definition.name}</span>
+            <span class="assignment">${definition.assignmentTitle}</span>
+          </span>
+        </span>
+        <span class="compact-status">
+          ${definition.locked ? '🔒 Bloqueada' : getStatusLabel(zone)}
+        </span>
+        ${isFinished ? '<span class="compact-done" aria-label="Tarea terminada">✅ Completada</span>' : ''}
+        <span class="expand-hint">Toca para abrir</span>
+      </summary>
       ${isRunning ? '<p class="active-badge">🔥 Estoy aquí</p>' : ''}
-      ${isFinished ? '<p class="confetti-badge" aria-label="Zona terminada">✨ ¡Buen trabajo! La tarjeta se volteó.</p>' : ''}
+      ${isFinished ? `<p class="confetti-badge" aria-label="Zona terminada">${zone.teacherConfirmed ? '⭐ Punto confirmado.' : '✅ Tarea completada. Esperando revisión para confirmar el punto.'}</p>` : ''}
       ${renderCompletionControl(definition, zone, progressPercent)}
       <dl class="zone-details">
         <div>
@@ -250,7 +313,7 @@ function renderZoneCard(zone: ZoneProgress): string {
         </div>
       </dl>
       ${renderZoneActions(definition, zone)}
-    </article>
+    </details>
   `;
 }
 
@@ -274,6 +337,8 @@ function render(): void {
           <div class="star-road">${renderProgressStars(completed)}</div>
         </div>
       </section>
+
+      ${renderWeeklyPoints(completed)}
 
       <section class="zone-grid" aria-label="Zonas de trabajo">
         ${state.zones.map(renderZoneCard).join('')}
@@ -303,6 +368,9 @@ app.addEventListener('click', (event) => {
 
   const zone = state.zones.find((candidate) => candidate.id === zoneId);
   if (!zone) return;
+
+  const definition = activeZoneDefinitions.find((candidate) => candidate.id === zoneId);
+  if (definition?.locked) return;
 
   if (action === 'primary') {
     handlePrimaryAction(zone);
