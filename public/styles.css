@@ -617,9 +617,9 @@ h1 {
 
 .weekly-bar {
   position: relative;
-  height: 2.1rem;
+  height: 2.8rem;
   margin: 0.9rem 0 0.6rem;
-  overflow: hidden;
+  overflow: visible;
   border: 4px solid #ffffff;
   border-radius: 999px;
   background: #e8def8;
@@ -642,14 +642,58 @@ h1 {
   background: #23c552;
 }
 
-.weekly-bar__goal {
+.weekly-bar__marker {
+  position: absolute;
+  top: -0.35rem;
+  bottom: -0.35rem;
+  z-index: 2;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  transform: translateX(-50%);
+}
+
+.weekly-bar__marker-line {
   position: absolute;
   top: 0;
   bottom: 0;
-  left: calc((25 / 30) * 100%);
-  z-index: 2;
-  width: 0.3rem;
+  width: 0.24rem;
+  border-radius: 999px;
   background: #2b2157;
+}
+
+.weekly-bar__marker-label {
+  z-index: 3;
+  min-width: 1.8rem;
+  padding: 0.12rem 0.35rem;
+  border: 2px solid #ffffff;
+  border-radius: 999px;
+  background: #2b2157;
+  color: #ffffff;
+  font-size: 0.85rem;
+  font-weight: 1000;
+  line-height: 1;
+  text-align: center;
+}
+
+.prize-key {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
+  gap: 0.4rem;
+  margin-bottom: 0.75rem;
+  color: #3b2b00;
+  font-size: 0.9rem;
+  font-weight: 1000;
+}
+
+.prize-key span {
+  padding: 0.35rem 0.5rem;
+  border-radius: 0.75rem;
+  background: #fff6bd;
+}
+
+.prize-key strong {
+  color: #7a3bd1;
 }
 
 .weekly-legend {

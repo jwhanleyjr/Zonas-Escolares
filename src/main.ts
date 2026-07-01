@@ -30,6 +30,19 @@ let state = loadState();
 let currentStudentId: string | null = null;
 let currentTime = Date.now();
 let studentName = 'estudiante';
+const dailyGoal = 6;
+type WeeklyProgressRow = { status?: string | null; teacher_confirmed?: boolean | null };
+type WeeklyProgressSummary = { weekStart?: string; weekEnd?: string; progress: WeeklyProgressRow[] };
+let weeklyProgress: WeeklyProgressSummary = { progress: [] };
+
+const prizeMilestones = [
+  { points: 5, label: 'Caja especial' },
+  { points: 10, label: 'Merienda especial' },
+  { points: 15, label: 'Manualidades' },
+  { points: 20, label: 'Videojuegos' },
+  { points: 25, label: 'Actividad especial' },
+];
+const weeklyPrizeMaxPoints = 30;
 
 const monthNames = [
   'enero',
@@ -91,10 +104,13 @@ async function syncProgress(action: string, zoneId: string): Promise<void> {
       body: JSON.stringify({ action, zone: zoneId }),
     });
     if (!response.ok) throw new Error(`Progress save failed: ${response.status}`);
-    const data = (await response.json()) as { progress?: unknown };
+    const data = (await response.json()) as { progress?: unknown; weeklyProgress?: unknown };
     if (Array.isArray(data.progress)) {
-      updateState(progressFromServer(data.progress as ServerZoneProgress[], activeZoneDefinitions));
+      state = progressFromServer(data.progress as ServerZoneProgress[], activeZoneDefinitions);
+      saveState(state, currentStudentId);
     }
+    weeklyProgress = parseWeeklyProgress(data.weeklyProgress);
+    render();
   } catch (error) {
     console.error(error);
   }
@@ -222,20 +238,51 @@ function renderZoneActions(definition: ZoneDefinition, zone: ZoneProgress): stri
 }
 
 function renderProgressStars(completed: number): string {
-  return activeZoneDefinitions
-    .map((_, index) => `<span class="star ${index < completed ? 'star--filled' : ''}" aria-hidden="true">★</span>`)
-    .join('');
+  return Array.from({ length: dailyGoal }, (_, index) => `<span class="star ${index < completed ? 'star--filled' : ''}" aria-hidden="true">★</span>`).join('');
+}
+
+function parseWeeklyProgress(value: unknown): WeeklyProgressSummary {
+  if (!value || typeof value !== 'object') return { progress: [] };
+  const candidate = value as { weekStart?: unknown; weekEnd?: unknown; progress?: unknown };
+  const summary: WeeklyProgressSummary = { progress: Array.isArray(candidate.progress) ? candidate.progress as WeeklyProgressRow[] : [] };
+  if (typeof candidate.weekStart === 'string') summary.weekStart = candidate.weekStart;
+  if (typeof candidate.weekEnd === 'string') summary.weekEnd = candidate.weekEnd;
+  return summary;
 }
 
 function confirmedZoneCount(): number {
-  return state.zones.filter((zone) => zone.status === 'Terminada' && zone.teacherConfirmed === true).length;
+  return weeklyProgress.progress.filter((zone) => zone.status === 'finished' && zone.teacher_confirmed === true).length;
 }
 
-function renderWeeklyPoints(completed: number): string {
-  const confirmedPoints = Math.min(confirmedZoneCount(), 30);
-  const pendingPoints = Math.min(completed, 30);
-  const confirmedPercent = (confirmedPoints / 30) * 100;
-  const pendingPercent = (pendingPoints / 30) * 100;
+function weeklyFinishedZoneCount(): number {
+  return weeklyProgress.progress.filter((zone) => zone.status === 'finished').length;
+}
+
+function renderPrizeMilestones(): string {
+  return prizeMilestones
+    .map((milestone) => {
+      const position = (milestone.points / weeklyPrizeMaxPoints) * 100;
+      return `
+        <span class="weekly-bar__marker" style="left: ${position}%">
+          <span class="weekly-bar__marker-line" aria-hidden="true"></span>
+          <span class="weekly-bar__marker-label">${milestone.points}</span>
+        </span>
+      `;
+    })
+    .join('');
+}
+
+function renderPrizeKey(): string {
+  return prizeMilestones
+    .map((milestone) => `<span><strong>${milestone.points}</strong> ${milestone.label}</span>`)
+    .join('');
+}
+
+function renderWeeklyPoints(): string {
+  const confirmedPoints = Math.min(confirmedZoneCount(), weeklyPrizeMaxPoints);
+  const pendingPoints = Math.min(weeklyFinishedZoneCount(), weeklyPrizeMaxPoints);
+  const confirmedPercent = (confirmedPoints / weeklyPrizeMaxPoints) * 100;
+  const pendingPercent = (pendingPoints / weeklyPrizeMaxPoints) * 100;
 
   return `
     <section class="weekly-panel" aria-label="Puntos de la semana">
@@ -247,15 +294,20 @@ function renderWeeklyPoints(completed: number): string {
         </div>
         <div class="reward-box" aria-label="Recompensas">
           <strong>🎁 Premios</strong>
-          <span>Juego</span>
-          <span>Arte</span>
-          <span>Sorpresa</span>
+          <span>5 Caja</span>
+          <span>10 Merienda</span>
+          <span>15 Manualidades</span>
+          <span>20 Videojuegos</span>
+          <span>25 Actividad</span>
         </div>
       </div>
       <div class="weekly-bar" aria-hidden="true">
         <span class="weekly-bar__confirmed" style="width: ${confirmedPercent}%"></span>
         <span class="weekly-bar__pending" style="width: ${pendingPercent}%"></span>
-        <span class="weekly-bar__goal"></span>
+        ${renderPrizeMilestones()}
+      </div>
+      <div class="prize-key" aria-label="Premios por puntos">
+        ${renderPrizeKey()}
       </div>
       <div class="weekly-legend">
         <span><i class="legend-dot legend-dot--confirmed"></i> Confirmados</span>
@@ -319,7 +371,7 @@ function renderZoneCard(zone: ZoneProgress): string {
 
 function render(): void {
   currentTime = Date.now();
-  const completed = completedZoneCount(state);
+  const completed = Math.min(completedZoneCount(state, activeZoneDefinitions), dailyGoal);
 
   app.innerHTML = `
     <main class="page-shell">
@@ -330,15 +382,15 @@ function render(): void {
           <p class="hero__date">Hoy es ${formatStudentDate(new Date(currentTime))}</p>
           <p class="hero__text">Puedes empezar cualquier zona. Si empiezas otra, la zona activa se pausa sola.</p>
         </div>
-        <div class="progress-summary" aria-live="polite" aria-label="${completed} de ${activeZoneDefinitions.length} zonas terminadas">
+        <div class="progress-summary" aria-live="polite" aria-label="${completed} de ${dailyGoal} zonas terminadas">
           <span class="trophy" aria-hidden="true">🏆</span>
-          <strong>${completed} de ${activeZoneDefinitions.length}</strong>
+          <strong>${completed} de ${dailyGoal}</strong>
           <span>zonas terminadas</span>
           <div class="star-road">${renderProgressStars(completed)}</div>
         </div>
       </section>
 
-      ${renderWeeklyPoints(completed)}
+      ${renderWeeklyPoints()}
 
       <section class="zone-grid" aria-label="Zonas de trabajo">
         ${state.zones.map(renderZoneCard).join('')}
@@ -427,10 +479,11 @@ async function loadServerProgress(): Promise<void> {
     const response = await fetch('/api/student-progress', { credentials: 'same-origin' });
     if (!response.ok) return;
 
-    const data = (await response.json()) as { progress?: unknown };
+    const data = (await response.json()) as { progress?: unknown; weeklyProgress?: unknown };
     if (!Array.isArray(data.progress)) return;
 
     state = progressFromServer(data.progress as ServerZoneProgress[], activeZoneDefinitions);
+    weeklyProgress = parseWeeklyProgress(data.weeklyProgress);
     saveState(state, currentStudentId);
   } catch (error) {
     console.error(error);
