@@ -11,6 +11,7 @@ export type ZoneDefinition = {
   linkUrl: string;
   icon: string;
   theme: string;
+  locked?: boolean;
 };
 
 export type StudentZoneSetting = {
@@ -25,6 +26,7 @@ export type ZoneProgress = {
   accumulatedSeconds: number;
   status: ZoneStatus;
   lastStartedAt: number | null;
+  teacherConfirmed?: boolean;
 };
 
 export type ZoneState = {
@@ -36,6 +38,7 @@ export type ServerZoneProgress = {
   recorded_seconds: number | null;
   status: 'not_started' | 'in_progress' | 'paused' | 'finished';
   active_started_at: string | null;
+  teacher_confirmed?: boolean | null;
 };
 
 export const zoneDefinitions: ZoneDefinition[] = [
@@ -98,6 +101,28 @@ export const zoneDefinitions: ZoneDefinition[] = [
     linkUrl: 'https://example.com/ejercicio',
     icon: '🏃',
     theme: 'lime',
+  },
+  {
+    id: 'videojuegos',
+    name: 'Video Game Zone',
+    assignmentTitle: 'Gana puntos para desbloquear juegos',
+    targetMinutes: null,
+    completionMode: 'checkbox',
+    linkUrl: 'https://example.com/video-game-zone',
+    icon: '🎮',
+    theme: 'teal',
+    locked: true,
+  },
+  {
+    id: 'manualidades',
+    name: 'Craft Zone',
+    assignmentTitle: 'Gana puntos para desbloquear manualidades',
+    targetMinutes: null,
+    completionMode: 'checkbox',
+    linkUrl: 'https://example.com/craft-zone',
+    icon: '✂️',
+    theme: 'mint',
+    locked: true,
   },
 ];
 
@@ -188,6 +213,7 @@ export function finishZone(state: ZoneState, zoneId: string, now: number): ZoneS
         accumulatedSeconds: getDisplaySeconds(zone, now),
         status: 'Terminada',
         lastStartedAt: null,
+        teacherConfirmed: false,
       };
     }),
   };
@@ -202,6 +228,7 @@ export function reopenZone(state: ZoneState, zoneId: string): ZoneState {
         ...zone,
         status: zone.accumulatedSeconds > 0 ? 'Pausada' : 'No iniciada',
         lastStartedAt: null,
+        teacherConfirmed: false,
       };
     }),
   };
@@ -239,6 +266,7 @@ export function progressFromServer(rows: ServerZoneProgress[], definitions: Zone
         accumulatedSeconds: Number(row.recorded_seconds ?? 0),
         status: toZoneStatus(row.status),
         lastStartedAt: Number.isFinite(lastStartedAt) ? lastStartedAt : null,
+        teacherConfirmed: row.teacher_confirmed === true,
       };
     }),
   };
