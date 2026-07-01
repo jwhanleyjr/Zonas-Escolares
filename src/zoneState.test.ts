@@ -115,6 +115,14 @@ function findZone(state: ZoneState, zoneId: string): ZoneProgress {
 }
 
 
+
+{
+  const initialState = createInitialState();
+  const finishedLockedZone = finishZone(initialState, 'videojuegos', 0);
+
+  assertEqual(completedZoneCount(finishedLockedZone), 0);
+}
+
 {
   const serverState = progressFromServer([
     { zone: 'lectura', recorded_seconds: 180, status: 'finished', active_started_at: null },

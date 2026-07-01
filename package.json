@@ -8,7 +8,7 @@
     "build": "rm -rf dist && tsc -p tsconfig.json && node scripts/build.mjs",
     "lint": "node scripts/lint.mjs",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "test": "tsc -p tsconfig.test.json && node dist-test/zoneState.test.js && node api/teacher/_shared.test.mjs && node api/auth/student.test.mjs && node api/teacher/settings.test.mjs && node api/teacher/progress.test.mjs",
+    "test": "tsc -p tsconfig.test.json && node dist-test/zoneState.test.js && node api/teacher/_shared.test.mjs && node api/auth/student.test.mjs && node api/teacher/settings.test.mjs && node api/teacher/progress.test.mjs && node api/student-progress.test.mjs",
     "supabase:push": "supabase db push"
   },
   "engines": {

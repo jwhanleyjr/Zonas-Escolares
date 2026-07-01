@@ -234,8 +234,9 @@ export function reopenZone(state: ZoneState, zoneId: string): ZoneState {
   };
 }
 
-export function completedZoneCount(state: ZoneState): number {
-  return state.zones.filter((zone) => zone.status === 'Terminada').length;
+export function completedZoneCount(state: ZoneState, definitions: ZoneDefinition[] = zoneDefinitions): number {
+  const countableZoneIds = new Set(definitions.filter((definition) => !definition.locked).map((definition) => definition.id));
+  return state.zones.filter((zone) => zone.status === 'Terminada' && countableZoneIds.has(zone.id)).length;
 }
 
 function toZoneStatus(status: ServerZoneProgress['status']): ZoneStatus {
