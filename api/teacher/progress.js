@@ -132,13 +132,11 @@ function renderGroupedConfirmationReport(students, progressRows, links, filter, 
   }).join('');
 }
 
-function renderZoneReviewRow(student, progressRows, links, filter, zoneFilter, reviewFilter, workDate) {
-  const progress = progressRows.find((row) => row.zone === zoneFilter);
-  const isConfirmed = progress?.teacher_confirmed === true;
+function renderZoneReviewRow(student, progress, links, filter, zoneFilter, reviewFilter) {
+  const isConfirmed = progress.teacher_confirmed === true;
   const link = links.get(`${student.id}:${zoneFilter}`);
-  const rowWorkDate = progress?.work_date ?? workDate;
   const badge = isConfirmed ? '<span class="confirm-badge confirm-badge--yes">Confirmado</span>' : '<span class="confirm-badge">Sin confirmar</span>';
-  return `<tr><td>${escapeHtml(student.display_name)}</td><td>${statusLabel(progress?.status)}</td><td>${minutes(progress?.recorded_seconds)}</td><td>${link ? `<a href="${escapeHtml(link.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(link.label)}</a>` : 'Sin enlace de plataforma'}</td><td>${renderReviewActions(student.id, zoneFilter, rowWorkDate, filter, zoneFilter, reviewFilter, isConfirmed)}</td><td>${badge}</td></tr>`;
+  return `<tr><td>${escapeHtml(progress.work_date)}</td><td>${escapeHtml(student.display_name)}</td><td>${statusLabel(progress.status)}</td><td>${minutes(progress.recorded_seconds)}</td><td>${link ? `<a href="${escapeHtml(link.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(link.label)}</a>` : 'Sin enlace de plataforma'}</td><td>${renderReviewActions(student.id, zoneFilter, progress.work_date, filter, zoneFilter, reviewFilter, isConfirmed)}</td><td>${badge}</td></tr>`;
 }
 
 export default async function handler(request, response) {
@@ -201,17 +199,17 @@ export default async function handler(request, response) {
   const options = [`<option value="active" ${filter === 'active' ? 'selected' : ''}>Estudiantes activos</option>`, `<option value="all" ${filter === 'all' ? 'selected' : ''}>Todos</option>`, ...studentsForValidation.map((s) => `<option value="${escapeHtml(s.id)}" ${filter === s.id ? 'selected' : ''}>${escapeHtml(s.display_name)}</option>`)].join('');
   const zoneOptions = [`<option value="all" ${zoneFilter === 'all' ? 'selected' : ''}>Todas las zonas</option>`, ...Object.entries(zoneLabels).map(([zone, label]) => `<option value="${escapeHtml(zone)}" ${zoneFilter === zone ? 'selected' : ''}>${escapeHtml(label)}</option>`)].join('');
   const reviewOptions = [`<option value="all" ${reviewFilter === 'all' ? 'selected' : ''}>Mostrar todas</option>`, `<option value="pending" ${reviewFilter === 'pending' ? 'selected' : ''}>Solo pendientes de confirmación</option>`].join('');
-  const rows = zoneFilter === 'all' ? '' : students.map((s) => {
-    const list = byStudent.get(s.id) ?? [];
-    const selectedZoneProgress = list.find((row) => row.zone === zoneFilter);
-    if (!selectedZoneProgress) return '';
-    if (reviewFilter === 'pending' && selectedZoneProgress.teacher_confirmed === true) return '';
-    return renderZoneReviewRow(s, list, links, filter, zoneFilter, reviewFilter, workDate);
+  const rows = zoneFilter === 'all' ? '' : students.flatMap((s) => {
+    const list = (byStudent.get(s.id) ?? [])
+      .filter((row) => row.zone === zoneFilter)
+      .filter((row) => reviewFilter !== 'pending' || row.teacher_confirmed !== true)
+      .sort((a, b) => String(b.work_date).localeCompare(String(a.work_date)));
+    return list.map((progressRow) => renderZoneReviewRow(s, progressRow, links, filter, zoneFilter, reviewFilter));
   }).join('');
   const groupedReport = zoneFilter === 'all' ? renderGroupedConfirmationReport(students, progress ?? [], links, filter, zoneFilter, reviewFilter) : '';
   const messageHtml = message ? `<p class="${message.kind === 'error' ? 'teacher-error' : 'teacher-status'}">${escapeHtml(message.text)}</p>` : '';
   const heading = zoneFilter === 'all' ? 'Confirmación por zona' : `Confirmar ${zoneLabels[zoneFilter]} por zona`;
-  const tableHead = '<tr><th>Estudiante</th><th>Estado</th><th>Tiempo registrado</th><th>Plataforma</th><th>Confirmación</th><th>Resultado</th></tr>';
+  const tableHead = '<tr><th>Fecha</th><th>Estudiante</th><th>Estado</th><th>Tiempo registrado</th><th>Plataforma</th><th>Confirmación</th><th>Resultado</th></tr>';
   const reportHtml = zoneFilter === 'all' ? groupedReport : (rows ? `<table class="teacher-table"><thead>${tableHead}</thead><tbody>${rows}</tbody></table>` : '<p>No hay zonas completadas para mostrar.</p>');
   const body = `<section class="teacher-panel"><p>El reporte muestra solo zonas que el estudiante marcó como terminadas. El tiempo mostrado es <strong>tiempo de trabajo registrado</strong>, no prueba de finalización académica. Usa Confirmar completado solo después de revisar la plataforma o tarea correspondiente.</p>${messageHtml}<form class="teacher-filter-form"><label>Estudiantes<select name="student" onchange="this.form.submit()">${options}</select></label><label>Revisar por zona<select name="zone" onchange="this.form.submit()">${zoneOptions}</select></label><label>Confirmación<select name="review" onchange="this.form.submit()">${reviewOptions}</select></label><button class="teacher-button teacher-button--secondary" type="submit">Ver progreso</button></form><h2>${escapeHtml(heading)}</h2>${reportHtml || '<p>No hay zonas completadas para mostrar.</p>'}</section>`;
   sendHtml(response, page('Progreso', profile, body));
