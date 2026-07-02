@@ -30,11 +30,18 @@ const app = appElement;
 let activeZoneDefinitions: ZoneDefinition[] = zoneDefinitions;
 let state = loadState();
 let currentStudentId: string | null = null;
+let currentProfileId: string | null = null;
 let currentTime = Date.now();
 let studentName = 'estudiante';
 const dailyGoal = 6;
 type WeeklyProgressSummary = { weekStart?: string; weekEnd?: string; progress: WeeklyProgressRow[] };
 let weeklyProgress: WeeklyProgressSummary = { progress: [] };
+type StudentMessage = { id: string; student_id: string; sender_profile_id: string; body: string; created_at: string; read_at: string | null };
+let messages: StudentMessage[] = [];
+let messageDraft = '';
+let messageStatus = '';
+let messagesLoading = false;
+let messagesOpen = false;
 
 const prizeMilestones = [
   { points: 5, label: 'Caja especial' },
@@ -301,6 +308,46 @@ function renderWeeklyPoints(): string {
   `;
 }
 
+
+function isMyMessage(message: StudentMessage): boolean {
+  return message.sender_profile_id === currentProfileId;
+}
+
+function renderStudentMessages(): string {
+  const unreadCount = messages.filter((message) => message.sender_profile_id !== currentProfileId && !message.read_at).length;
+  const messageRows = messages.length ? messages.map((message) => {
+    const mine = isMyMessage(message);
+    return `
+      <article class="student-message ${mine ? 'student-message--mine' : 'student-message--teacher'}">
+        <strong>${mine ? 'Yo' : 'Maestro'}</strong>
+        <p>${escapeHtml(message.body)}</p>
+      </article>
+    `;
+  }).join('') : '<p class="message-empty">No hay mensajes todavía.</p>';
+
+  return `
+    <button class="message-fab" type="button" data-action="toggle-messages" aria-label="Mensaje para mi maestro" aria-expanded="${messagesOpen}">
+      ✉️
+      ${unreadCount ? '<span class="message-alert" aria-label="Hay mensajes nuevos">!</span>' : ''}
+    </button>
+    <section class="message-popover ${messagesOpen ? 'message-popover--open' : ''}" aria-label="Mensaje para mi maestro">
+      <div class="message-popover__header">
+        <h2>Mensaje para mi maestro</h2>
+        <button class="message-close" type="button" data-action="toggle-messages" aria-label="Cerrar mensajes">×</button>
+      </div>
+      <div class="message-list" aria-live="polite">
+        ${messagesLoading ? '<p class="message-empty">Cargando mensajes...</p>' : messageRows}
+      </div>
+      <label class="message-compose">
+        <span>Escribe tu mensaje</span>
+        <textarea data-action="message-draft" maxlength="1000" rows="3">${escapeHtml(messageDraft)}</textarea>
+      </label>
+      <button class="message-send" type="button" data-action="send-message">Enviar mensaje</button>
+      <p class="message-status" aria-live="polite">${escapeHtml(messageStatus)}</p>
+    </section>
+  `;
+}
+
 function renderZoneCard(zone: ZoneProgress): string {
   const definition = activeZoneDefinitions.find((candidate) => candidate.id === zone.id);
   if (!definition) return '';
@@ -359,6 +406,7 @@ function render(): void {
 
   app.innerHTML = `
     <main class="page-shell">
+      ${renderStudentMessages()}
       <section class="hero" aria-labelledby="page-title">
         <div>
           <p class="hero__label">👋 ¡Hola, ${escapeHtml(studentName)}!</p>
@@ -398,8 +446,21 @@ app.addEventListener('click', (event) => {
   if (!actionElement) return;
 
   const action = actionElement.dataset.action;
-  const zoneId = actionElement.dataset.zoneId;
 
+  if (action === 'toggle-messages') {
+    messagesOpen = !messagesOpen;
+    messageStatus = '';
+    if (messagesOpen) void loadMessages();
+    render();
+    return;
+  }
+
+  if (action === 'send-message') {
+    void sendMessage();
+    return;
+  }
+
+  const zoneId = actionElement.dataset.zoneId;
   if (!zoneId) return;
 
   const zone = state.zones.find((candidate) => candidate.id === zoneId);
@@ -423,6 +484,13 @@ app.addEventListener('click', (event) => {
   }
 });
 
+app.addEventListener('input', (event) => {
+  const target = event.target;
+  if (!(target instanceof HTMLTextAreaElement)) return;
+  if (target.dataset.action !== 'message-draft') return;
+  messageDraft = target.value;
+});
+
 setInterval(() => {
   if (state.zones.some((zone) => zone.status === 'En progreso')) {
     render();
@@ -434,7 +502,7 @@ async function loadStudentName(): Promise<void> {
     const response = await fetch('/api/auth/student', { credentials: 'same-origin' });
     if (!response.ok) return;
 
-    const data = (await response.json()) as { displayName?: unknown; studentId?: unknown; zoneSettings?: unknown };
+    const data = (await response.json()) as { displayName?: unknown; studentId?: unknown; profileId?: unknown; zoneSettings?: unknown };
     if (typeof data.displayName !== 'string') return;
 
     const displayName = data.displayName.trim();
@@ -442,6 +510,7 @@ async function loadStudentName(): Promise<void> {
 
     studentName = displayName;
     currentStudentId = typeof data.studentId === 'string' ? data.studentId : null;
+    currentProfileId = typeof data.profileId === 'string' ? data.profileId : null;
     state = loadState(currentStudentId);
 
     if (Array.isArray(data.zoneSettings)) {
@@ -474,5 +543,47 @@ async function loadServerProgress(): Promise<void> {
   }
 }
 
+async function loadMessages(): Promise<void> {
+  messagesLoading = true;
+  try {
+    const response = await fetch('/api/student-messages', { credentials: 'same-origin' });
+    if (!response.ok) throw new Error(`Messages load failed: ${response.status}`);
+    const data = (await response.json()) as { messages?: unknown };
+    messages = Array.isArray(data.messages) ? data.messages as StudentMessage[] : [];
+  } catch (error) {
+    console.error(error);
+    messageStatus = 'No se pudo cargar';
+  } finally {
+    messagesLoading = false;
+    render();
+  }
+}
+
+async function sendMessage(): Promise<void> {
+  const body = messageDraft.trim();
+  if (!body) {
+    messageStatus = 'Escribe tu mensaje';
+    render();
+    return;
+  }
+  try {
+    const response = await fetch('/api/student-messages', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ body }),
+    });
+    if (!response.ok) throw new Error(`Message send failed: ${response.status}`);
+    messageDraft = '';
+    messageStatus = 'Enviado';
+    await loadMessages();
+  } catch (error) {
+    console.error(error);
+    messageStatus = 'No se pudo enviar';
+    render();
+  }
+}
+
 render();
 void loadStudentName();
+void loadMessages();
