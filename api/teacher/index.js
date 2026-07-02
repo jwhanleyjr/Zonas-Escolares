@@ -38,6 +38,7 @@ export default async function handler(request, response) {
     ['/teacher/students', 'Estudiantes', 'Agregar estudiantes y editar sus enlaces de plataformas.'],
     ['/teacher/kami', 'Clases Diversas', 'Asignaciones de Kami por fecha.'],
     ['/teacher/progress', 'Progreso de hoy', 'Tiempo de trabajo registrado y confirmación por plataforma.'],
+    ['/teacher/messages', 'Mensajes', 'Enviar mensajes a estudiantes y leer respuestas.'],
     ['/teacher/progress?review=pending', 'Pendientes de confirmación', 'Ver solamente zonas que todavía necesitan confirmación.'],
   ].map(([href, title, text]) => `<a class="teacher-card" href="${href}"><strong>${title}</strong><span>${text}</span></a>`).join('');
   const zoneReviewLinks = Object.entries(zoneLabels).map(([zone, label]) => `<a class="teacher-card" href="/teacher/progress?zone=${zone}&review=pending"><strong>${label}</strong><span>Confirmar pendientes solo de esta zona.</span></a>`).join('');
