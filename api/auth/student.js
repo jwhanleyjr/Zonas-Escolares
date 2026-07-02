@@ -31,7 +31,7 @@ async function sendStudentProfile(response, supabase, student) {
 
   if (settingsError) console.error(settingsError);
   if (linksError) console.error(linksError);
-  sendJson(response, 200, { studentId: student.id, displayName: student.display_name, zoneSettings: applyPlatformFallbackLinks(zoneSettings, platformLinks) });
+  sendJson(response, 200, { studentId: student.id, profileId: student.profile_id, displayName: student.display_name, zoneSettings: applyPlatformFallbackLinks(zoneSettings, platformLinks) });
 }
 
 export default async function handler(request, response) {
@@ -47,7 +47,7 @@ export default async function handler(request, response) {
 
   const { data: linkedStudent, error: linkedError } = await supabase
     .from('students')
-    .select('id, display_name')
+    .select('id, profile_id, display_name')
     .eq('active', true)
     .eq('profile_id', user.id)
     .maybeSingle();
@@ -61,7 +61,7 @@ export default async function handler(request, response) {
 
   const { data: rosterStudent, error: rosterError } = await supabase
     .from('students')
-    .select('id, display_name')
+    .select('id, profile_id, display_name')
     .eq('active', true)
     .ilike('approved_google_email', user.email)
     .maybeSingle();
