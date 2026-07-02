@@ -35,6 +35,10 @@
       "destination": "/api/teacher/progress"
     },
     {
+      "source": "/teacher/messages",
+      "destination": "/api/teacher/messages"
+    },
+    {
       "source": "/teacher/settings",
       "destination": "/api/teacher/settings"
     }
