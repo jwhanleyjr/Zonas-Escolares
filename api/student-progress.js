@@ -32,6 +32,41 @@ function formatDate(date) {
   return date.toISOString().slice(0, 10);
 }
 
+const nonUnlockingPrizes = [
+  { points: 5, label: 'Caja especial' },
+  { points: 10, label: 'Merienda especial' },
+  { points: 25, label: 'Actividad especial' },
+];
+
+function weekStartForDate(value) {
+  const date = new Date(`${value}T12:00:00.000Z`);
+  const day = date.getUTCDay();
+  const daysSinceMonday = day === 0 ? 6 : day - 1;
+  return formatDate(addDays(date, -daysSinceMonday));
+}
+
+function buildPrizeAwards(progressRows, redemptionRows = [], currentWeekStart = '') {
+  const redeemed = new Set((redemptionRows ?? []).map((row) => `${row.week_start}:${row.prize_points}`));
+  const confirmedByWeek = new Map();
+  for (const row of progressRows ?? []) {
+    if (row.teacher_confirmed !== true || !row.work_date) continue;
+    const awardWeekStart = weekStartForDate(row.work_date);
+    confirmedByWeek.set(awardWeekStart, (confirmedByWeek.get(awardWeekStart) ?? 0) + 1);
+  }
+
+  const awards = [];
+  for (const [awardWeekStart, confirmedPoints] of confirmedByWeek.entries()) {
+    for (const prize of nonUnlockingPrizes) {
+      if (confirmedPoints < prize.points) continue;
+      const isRedeemed = redeemed.has(`${awardWeekStart}:${prize.points}`);
+      if (isRedeemed && awardWeekStart !== currentWeekStart) continue;
+      awards.push({ week_start: awardWeekStart, points: prize.points, label: prize.label, redeemed: isRedeemed });
+    }
+  }
+  awards.sort((a, b) => a.week_start.localeCompare(b.week_start) || a.points - b.points);
+  return awards;
+}
+
 export function getSchoolWeekBounds(now = new Date()) {
   const schoolDate = getSchoolDate(now);
   const date = new Date(`${schoolDate}T12:00:00.000Z`);
@@ -46,16 +81,29 @@ async function loadWeeklyProgress(supabase) {
   const { weekStart, weekEnd } = getSchoolWeekBounds();
   const dailyProgress = await loadDailyProgress(supabase);
   const studentId = dailyProgress.find((row) => row?.student_id)?.student_id;
-  if (!studentId) return { weekStart, weekEnd, progress: [] };
+  if (!studentId) return { weekStart, weekEnd, progress: [], prizeAwards: [] };
 
-  const { data, error } = await supabase
-    .from('zone_progress')
-    .select('work_date, zone, status, teacher_confirmed')
-    .eq('student_id', studentId)
-    .gte('work_date', weekStart)
-    .lte('work_date', weekEnd);
+  const [{ data, error }, { data: currentWeekProgress, error: currentWeekError }, { data: redemptions, error: redemptionsError }] = await Promise.all([
+    supabase
+      .from('zone_progress')
+      .select('work_date, zone, status, teacher_confirmed')
+      .eq('student_id', studentId)
+      .eq('teacher_confirmed', true),
+    supabase
+      .from('zone_progress')
+      .select('work_date, zone, status, teacher_confirmed')
+      .eq('student_id', studentId)
+      .gte('work_date', weekStart)
+      .lte('work_date', weekEnd),
+    supabase
+      .from('weekly_prize_redemptions')
+      .select('week_start, prize_points, redeemed_at')
+      .eq('student_id', studentId),
+  ]);
   if (error) throw error;
-  return { weekStart, weekEnd, progress: data ?? [] };
+  if (currentWeekError) throw currentWeekError;
+  if (redemptionsError) throw redemptionsError;
+  return { weekStart, weekEnd, progress: currentWeekProgress ?? [], prizeAwards: buildPrizeAwards(data ?? [], redemptions ?? [], weekStart) };
 }
 
 async function runAction(supabase, action, zone) {

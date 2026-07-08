@@ -1545,6 +1545,40 @@ body.teacher-page {
   background: #e7fbe8 !important;
 }
 
+.prize-key__redeemed {
+  border-color: #7c3aed;
+  background: #ede9fe !important;
+}
+
+
+.weekly-prize-list {
+  display: grid;
+  gap: 0.45rem;
+  margin: 0.85rem 0;
+  padding: 0;
+  list-style: none;
+}
+
+.weekly-prize-list li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.65rem;
+  align-items: center;
+  padding: 0.65rem 0.8rem;
+  border: 2px solid #d8cdf4;
+  border-radius: 0.85rem;
+  background: #fff;
+}
+
+.weekly-prize-list span {
+  font-weight: 900;
+  color: #58457e;
+}
+
+.weekly-prize-list small {
+  color: #5d6b7a;
+}
+
 .weekly-prize-table {
   margin-top: 0.85rem;
 }
