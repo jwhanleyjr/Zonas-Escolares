@@ -77,10 +77,15 @@ export function getSchoolWeekBounds(now = new Date()) {
   return { weekStart: formatDate(monday), weekEnd: formatDate(friday) };
 }
 
-async function loadWeeklyProgress(supabase) {
-  const { weekStart, weekEnd } = getSchoolWeekBounds();
-  const dailyProgress = await loadDailyProgress(supabase);
-  const studentId = dailyProgress.find((row) => row?.student_id)?.student_id;
+export async function loadCurrentStudentId(supabase) {
+  const { data, error } = await supabase.rpc('current_student_id');
+  if (error) throw error;
+  return typeof data === 'string' && data ? data : null;
+}
+
+export async function loadWeeklyProgress(supabase, now = new Date()) {
+  const { weekStart, weekEnd } = getSchoolWeekBounds(now);
+  const studentId = await loadCurrentStudentId(supabase);
   if (!studentId) return { weekStart, weekEnd, progress: [], prizeAwards: [] };
 
   const [{ data, error }, { data: currentWeekProgress, error: currentWeekError }, { data: redemptions, error: redemptionsError }] = await Promise.all([
@@ -93,6 +98,7 @@ async function loadWeeklyProgress(supabase) {
       .from('zone_progress')
       .select('work_date, zone, status, teacher_confirmed')
       .eq('student_id', studentId)
+      .eq('status', 'finished')
       .gte('work_date', weekStart)
       .lte('work_date', weekEnd),
     supabase
