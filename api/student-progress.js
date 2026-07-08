@@ -89,11 +89,7 @@ export async function loadWeeklyProgress(supabase, now = new Date()) {
   if (!studentId) return { weekStart, weekEnd, progress: [], prizeAwards: [] };
 
   const [{ data, error }, { data: currentWeekProgress, error: currentWeekError }, { data: redemptions, error: redemptionsError }] = await Promise.all([
-    supabase
-      .from('zone_progress')
-      .select('work_date, zone, status, teacher_confirmed')
-      .eq('student_id', studentId)
-      .eq('teacher_confirmed', true),
+    supabase.rpc('student_confirmed_zone_progress'),
     supabase.rpc('current_week_zone_progress'),
     supabase
       .from('weekly_prize_redemptions')
@@ -101,9 +97,20 @@ export async function loadWeeklyProgress(supabase, now = new Date()) {
       .eq('student_id', studentId),
   ]);
   if (error) throw error;
-  if (currentWeekError) throw currentWeekError;
+  if (currentWeekError) console.error('Current-week progress RPC failed', currentWeekError);
   if (redemptionsError) throw redemptionsError;
-  return { weekStart, weekEnd, progress: currentWeekProgress ?? [], prizeAwards: buildPrizeAwards(data ?? [], redemptions ?? [], weekStart) };
+
+  const progressByDateAndZone = new Map();
+  for (const row of currentWeekError ? [] : currentWeekProgress ?? []) {
+    progressByDateAndZone.set(`${row.work_date}:${row.zone}`, row);
+  }
+  for (const row of data ?? []) {
+    if (!row.work_date || row.work_date < weekStart || row.work_date > weekEnd) continue;
+    progressByDateAndZone.set(`${row.work_date}:${row.zone}`, row);
+  }
+  const progress = [...progressByDateAndZone.values()].sort((a, b) => String(a.work_date).localeCompare(String(b.work_date)) || String(a.zone).localeCompare(String(b.zone)));
+
+  return { weekStart, weekEnd, progress, prizeAwards: buildPrizeAwards(data ?? [], redemptions ?? [], weekStart) };
 }
 
 async function runAction(supabase, action, zone) {
