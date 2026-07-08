@@ -43,6 +43,7 @@ let messageDraft = '';
 let messageStatus = '';
 let messagesLoading = false;
 let messagesOpen = false;
+let openZoneId: string | null = null;
 
 const prizeMilestones = [
   { points: 5, label: 'Caja especial', unlocksZone: false },
@@ -127,6 +128,7 @@ async function syncProgress(action: string, zoneId: string): Promise<void> {
 
 function handlePrimaryAction(zone: ZoneProgress): void {
   const now = Date.now();
+  openZoneId = zone.id;
   if (zone.status === 'En progreso') {
     updateState(pauseZone(state, zone.id, now));
     void syncProgress('pause', zone.id);
@@ -315,8 +317,16 @@ function renderPrizeCarryoverList(): string {
   return `<ul class="weekly-prize-list" aria-label="Premios ganados">${items}</ul>`;
 }
 
+function getWeeklyProgressRowsForDisplay(): WeeklyProgressRow[] {
+  if (weeklyProgress.progress.length) return weeklyProgress.progress;
+
+  return state.zones
+    .filter((zone) => zone.status === 'Terminada')
+    .map((zone) => ({ status: 'Terminada', teacher_confirmed: zone.teacherConfirmed === true }));
+}
+
 function renderWeeklyPoints(): string {
-  const { confirmedPoints, pendingReviewPoints, finishedPoints } = summarizeWeeklyProgress(weeklyProgress.progress, weeklyPrizeMaxPoints);
+  const { confirmedPoints, pendingReviewPoints, finishedPoints } = summarizeWeeklyProgress(getWeeklyProgressRowsForDisplay(), weeklyPrizeMaxPoints);
   const confirmedPercent = (confirmedPoints / weeklyPrizeMaxPoints) * 100;
   const pendingReviewPercent = (pendingReviewPoints / weeklyPrizeMaxPoints) * 100;
 
@@ -394,10 +404,11 @@ function renderZoneCard(zone: ZoneProgress): string {
   const displaySeconds = getDisplaySeconds(zone, currentTime);
   const isRunning = zone.status === 'En progreso';
   const isFinished = zone.status === 'Terminada';
+  const isOpen = openZoneId === zone.id || (openZoneId === null && isRunning);
   const progressPercent = getProgressPercent(displaySeconds, definition.targetMinutes);
 
   return `
-    <details class="zone-card zone-card--${definition.theme} ${isRunning ? 'zone-card--active' : ''} ${isFinished ? 'zone-card--finished' : ''} ${definition.locked ? 'zone-card--locked' : ''}" aria-label="Zona ${definition.name}" ${isRunning || isFinished ? 'open' : ''}>
+    <details class="zone-card zone-card--${definition.theme} ${isRunning ? 'zone-card--active' : ''} ${isFinished ? 'zone-card--finished' : ''} ${definition.locked ? 'zone-card--locked' : ''}" aria-label="Zona ${definition.name}" data-zone-card-id="${zone.id}" ${isOpen ? 'open' : ''}>
       <summary class="zone-card__summary">
         <span class="zone-card__stripe" aria-hidden="true"></span>
         <span class="zone-card__top">
@@ -411,7 +422,7 @@ function renderZoneCard(zone: ZoneProgress): string {
           ${definition.locked ? '🔒 Bloqueada' : getStatusLabel(zone)}
         </span>
         ${isFinished ? '<span class="compact-done" aria-label="Tarea terminada">✅ Completada</span>' : ''}
-        <span class="expand-hint">Toca para abrir</span>
+        <span class="expand-hint">${isOpen ? 'Toca para cerrar' : 'Toca para abrir'}</span>
       </summary>
       ${isRunning ? '<p class="active-badge">🔥 Estoy aquí</p>' : ''}
       ${isFinished ? `<p class="confetti-badge" aria-label="Zona terminada">${zone.teacherConfirmed ? '⭐ Punto confirmado.' : '✅ Tarea completada. Esperando revisión para confirmar el punto.'}</p>` : ''}
@@ -476,6 +487,21 @@ function render(): void {
     </main>
   `;
 }
+
+app.addEventListener('toggle', (event) => {
+  const target = event.target;
+  if (!(target instanceof HTMLDetailsElement)) return;
+  if (!target.classList.contains('zone-card')) return;
+
+  const zoneId = target.dataset.zoneCardId;
+  if (!zoneId) return;
+
+  const nextOpenZoneId = target.open ? zoneId : openZoneId === zoneId ? null : openZoneId;
+  if (nextOpenZoneId === openZoneId) return;
+
+  openZoneId = nextOpenZoneId;
+  render();
+}, true);
 
 app.addEventListener('click', (event) => {
   const target = event.target;
@@ -575,6 +601,7 @@ async function loadServerProgress(): Promise<void> {
     if (!Array.isArray(data.progress)) return;
 
     state = progressFromServer(data.progress as ServerZoneProgress[], activeZoneDefinitions);
+    openZoneId = state.zones.find((zone) => zone.status === 'En progreso')?.id ?? openZoneId;
     weeklyProgress = parseWeeklyProgress(data.weeklyProgress);
     saveState(state, currentStudentId);
   } catch (error) {
