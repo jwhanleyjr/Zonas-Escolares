@@ -39,9 +39,13 @@ export type WeeklyProgressRow = {
   teacher_confirmed?: boolean | null;
 };
 
+function isFinishedWeeklyRow(zone: WeeklyProgressRow): boolean {
+  return zone.status === 'finished' || zone.status === 'Terminada';
+}
+
 export function summarizeWeeklyProgress(rows: WeeklyProgressRow[], maxPoints: number): { confirmedPoints: number; pendingReviewPoints: number; finishedPoints: number } {
-  const confirmedPoints = Math.min(rows.filter((zone) => zone.teacher_confirmed === true).length, maxPoints);
-  const pendingReviewPoints = Math.min(rows.filter((zone) => zone.status === 'finished' && zone.teacher_confirmed !== true).length, Math.max(0, maxPoints - confirmedPoints));
+  const confirmedPoints = Math.min(rows.filter((zone) => isFinishedWeeklyRow(zone) && zone.teacher_confirmed === true).length, maxPoints);
+  const pendingReviewPoints = Math.min(rows.filter((zone) => isFinishedWeeklyRow(zone) && zone.teacher_confirmed !== true).length, Math.max(0, maxPoints - confirmedPoints));
   return { confirmedPoints, pendingReviewPoints, finishedPoints: confirmedPoints + pendingReviewPoints };
 }
 

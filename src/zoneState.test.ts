@@ -154,4 +154,16 @@ function findZone(state: ZoneState, zoneId: string): ZoneProgress {
   assertEqual(summary.finishedPoints, 5);
 }
 
+{
+  const summary = summarizeWeeklyProgress([
+    { status: 'Terminada', teacher_confirmed: true },
+    { status: 'Terminada', teacher_confirmed: false },
+    { status: 'Pausada', teacher_confirmed: true },
+  ], 30);
+
+  assertEqual(summary.confirmedPoints, 1);
+  assertEqual(summary.pendingReviewPoints, 1);
+  assertEqual(summary.finishedPoints, 2);
+}
+
 console.log('Zone timer and state-transition tests passed.');
