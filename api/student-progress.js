@@ -89,19 +89,8 @@ export async function loadWeeklyProgress(supabase, now = new Date()) {
   if (!studentId) return { weekStart, weekEnd, progress: [], prizeAwards: [] };
 
   const [{ data, error }, { data: currentWeekProgress, error: currentWeekError }, { data: redemptions, error: redemptionsError }] = await Promise.all([
-    supabase
-      .from('zone_progress')
-      .select('work_date, zone, status, teacher_confirmed')
-      .eq('student_id', studentId)
-      .eq('teacher_confirmed', true),
-    supabase
-      .from('zone_progress')
-      .select('work_date, zone, status, teacher_confirmed')
-      .eq('student_id', studentId)
-      .gte('work_date', weekStart)
-      .lte('work_date', weekEnd)
-      .order('work_date', { ascending: true })
-      .order('zone', { ascending: true }),
+    supabase.rpc('student_confirmed_zone_progress'),
+    supabase.rpc('current_week_zone_progress'),
     supabase
       .from('weekly_prize_redemptions')
       .select('week_start, prize_points, redeemed_at')

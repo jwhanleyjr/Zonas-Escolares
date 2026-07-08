@@ -17,22 +17,8 @@ assert.equal(await loadCurrentStudentId({ rpc: async (name) => ({ data: name ===
     filters: [],
     select(columns) { this.columns = columns; return this; },
     eq(column, value) { this.filters.push(['eq', column, value]); return this; },
-    gte(column, value) { this.filters.push(['gte', column, value]); return this; },
-    lte(column, value) { this.filters.push(['lte', column, value]); return this; },
-    order(column, options) { this.filters.push(['order', column, options]); return this; },
     then(resolve) {
-      return resolve({
-        data: this.table === 'zone_progress' ? [
-          { work_date: '2026-07-06', zone: 'lectura', status: 'finished', teacher_confirmed: true },
-          { work_date: '2026-07-06', zone: 'mecanografia', status: 'finished', teacher_confirmed: true },
-          { work_date: '2026-07-07', zone: 'lectura', status: 'finished', teacher_confirmed: true },
-          { work_date: '2026-07-07', zone: 'mecanografia', status: 'finished', teacher_confirmed: true },
-          { work_date: '2026-07-08', zone: 'lectura', status: 'finished', teacher_confirmed: true },
-          { work_date: '2026-07-08', zone: 'mecanografia', status: 'finished', teacher_confirmed: true },
-          { work_date: '2026-06-30', zone: 'lectura', status: 'finished', teacher_confirmed: true },
-        ] : [],
-        error: null,
-      });
+      return resolve({ data: [], error: null });
     },
   });
   const rpcCalls = [];
@@ -40,6 +26,18 @@ assert.equal(await loadCurrentStudentId({ rpc: async (name) => ({ data: name ===
     rpc: async (name) => {
       rpcCalls.push(name);
       if (name === 'current_student_id') return { data: 'student-1', error: null };
+      if (name === 'student_confirmed_zone_progress') return {
+        data: [
+          { work_date: '2026-07-06', zone: 'lectura', status: 'finished', teacher_confirmed: true },
+          { work_date: '2026-07-06', zone: 'mecanografia', status: 'finished', teacher_confirmed: true },
+          { work_date: '2026-07-07', zone: 'lectura', status: 'finished', teacher_confirmed: true },
+          { work_date: '2026-07-07', zone: 'mecanografia', status: 'finished', teacher_confirmed: true },
+          { work_date: '2026-07-08', zone: 'lectura', status: 'finished', teacher_confirmed: true },
+          { work_date: '2026-07-08', zone: 'mecanografia', status: 'finished', teacher_confirmed: true },
+          { work_date: '2026-06-30', zone: 'lectura', status: 'finished', teacher_confirmed: true },
+        ],
+        error: null,
+      };
       if (name === 'current_week_zone_progress') return {
         data: [
           { work_date: '2026-07-08', zone: 'matematicas', status: 'finished', teacher_confirmed: false },
@@ -56,5 +54,5 @@ assert.equal(await loadCurrentStudentId({ rpc: async (name) => ({ data: name ===
   assert.equal(weekly.progress.filter((row) => row.teacher_confirmed === true).length, 6, 'weekly report includes confirmed rows from all days in the current week');
   assert.equal(weekly.progress.filter((row) => row.status === 'finished' && row.teacher_confirmed !== true).length, 3, 'weekly report preserves pending finished rows returned by the current-week source');
   assert.equal(weekly.progress.some((row) => row.work_date === '2026-06-30'), false, 'weekly report excludes confirmed rows from prior weeks');
-  assert.deepEqual(rpcCalls, ['current_student_id', 'current_week_zone_progress'], 'weekly report resolves the current student and reads current-week progress');
+  assert.deepEqual(rpcCalls, ['current_student_id', 'student_confirmed_zone_progress', 'current_week_zone_progress'], 'weekly report resolves the current student and reads current-week progress');
 }
