@@ -44,11 +44,11 @@ let messagesLoading = false;
 let messagesOpen = false;
 
 const prizeMilestones = [
-  { points: 5, label: 'Caja especial' },
-  { points: 10, label: 'Merienda especial' },
-  { points: 15, label: 'Manualidades' },
-  { points: 20, label: 'Videojuegos' },
-  { points: 25, label: 'Actividad especial' },
+  { points: 5, label: 'Caja especial', unlocksZone: false },
+  { points: 10, label: 'Merienda especial', unlocksZone: false },
+  { points: 15, label: 'Manualidades', unlocksZone: true },
+  { points: 20, label: 'Videojuegos', unlocksZone: true },
+  { points: 25, label: 'Actividad especial', unlocksZone: false },
 ];
 const weeklyPrizeMaxPoints = 30;
 
@@ -272,10 +272,28 @@ function renderPrizeMilestones(): string {
     .join('');
 }
 
-function renderPrizeKey(): string {
+function renderPrizeKey(confirmedPoints: number): string {
   return prizeMilestones
-    .map((milestone) => `<span><strong>${milestone.points}</strong> ${milestone.label}</span>`)
+    .map((milestone) => {
+      const earned = confirmedPoints >= milestone.points;
+      const kind = milestone.unlocksZone ? 'abre zona' : 'premio';
+      return `<span class="${earned ? 'prize-key__earned' : ''}"><strong>${milestone.points}</strong> ${milestone.label} <em>${earned ? 'ganado' : kind}</em></span>`;
+    })
     .join('');
+}
+
+function renderPrizeAlert(confirmedPoints: number): string {
+  const earnedPrizes = prizeMilestones.filter((milestone) => !milestone.unlocksZone && confirmedPoints >= milestone.points);
+  if (!earnedPrizes.length) return '';
+  const latestPrize = earnedPrizes.at(-1);
+  if (!latestPrize) return '';
+  return `
+    <div class="weekly-prize-alert" role="status" aria-live="polite">
+      <span aria-hidden="true">🎁</span>
+      <strong>¡Ganaste ${latestPrize.label} esta semana!</strong>
+      <span>Tu maestro mira los puntos confirmados.</span>
+    </div>
+  `;
 }
 
 function renderWeeklyPoints(): string {
@@ -297,8 +315,9 @@ function renderWeeklyPoints(): string {
         <span class="weekly-bar__pending" style="left: ${confirmedPercent}%; width: ${pendingReviewPercent}%"></span>
         ${renderPrizeMilestones()}
       </div>
+      ${renderPrizeAlert(confirmedPoints)}
       <div class="prize-key" aria-label="Premios por puntos">
-        ${renderPrizeKey()}
+        ${renderPrizeKey(confirmedPoints)}
       </div>
       <div class="weekly-legend">
         <span><i class="legend-dot legend-dot--confirmed"></i> Confirmados</span>
