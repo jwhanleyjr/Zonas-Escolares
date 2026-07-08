@@ -34,8 +34,9 @@ let currentProfileId: string | null = null;
 let currentTime = Date.now();
 let studentName = 'estudiante';
 const dailyGoal = 6;
-type WeeklyProgressSummary = { weekStart?: string; weekEnd?: string; progress: WeeklyProgressRow[] };
-let weeklyProgress: WeeklyProgressSummary = { progress: [] };
+type WeeklyPrizeAward = { week_start?: string | null; points?: number | null; label?: string | null; redeemed?: boolean | null };
+type WeeklyProgressSummary = { weekStart?: string; weekEnd?: string; progress: WeeklyProgressRow[]; prizeAwards: WeeklyPrizeAward[] };
+let weeklyProgress: WeeklyProgressSummary = { progress: [], prizeAwards: [] };
 type StudentMessage = { id: string; student_id: string; sender_profile_id: string; body: string; created_at: string; read_at: string | null };
 let messages: StudentMessage[] = [];
 let messageDraft = '';
@@ -250,9 +251,12 @@ function renderProgressStars(completed: number): string {
 }
 
 function parseWeeklyProgress(value: unknown): WeeklyProgressSummary {
-  if (!value || typeof value !== 'object') return { progress: [] };
-  const candidate = value as { weekStart?: unknown; weekEnd?: unknown; progress?: unknown };
-  const summary: WeeklyProgressSummary = { progress: Array.isArray(candidate.progress) ? candidate.progress as WeeklyProgressRow[] : [] };
+  if (!value || typeof value !== 'object') return { progress: [], prizeAwards: [] };
+  const candidate = value as { weekStart?: unknown; weekEnd?: unknown; progress?: unknown; prizeAwards?: unknown };
+  const summary: WeeklyProgressSummary = {
+    progress: Array.isArray(candidate.progress) ? candidate.progress as WeeklyProgressRow[] : [],
+    prizeAwards: Array.isArray(candidate.prizeAwards) ? candidate.prizeAwards as WeeklyPrizeAward[] : [],
+  };
   if (typeof candidate.weekStart === 'string') summary.weekStart = candidate.weekStart;
   if (typeof candidate.weekEnd === 'string') summary.weekEnd = candidate.weekEnd;
   return summary;
@@ -273,27 +277,42 @@ function renderPrizeMilestones(): string {
 }
 
 function renderPrizeKey(confirmedPoints: number): string {
+  const currentWeekAwards = weeklyProgress.prizeAwards.filter((award) => award.week_start === weeklyProgress.weekStart);
+  const redeemedPoints = new Set(currentWeekAwards.filter((award) => award.redeemed === true).map((award) => Number(award.points)));
   return prizeMilestones
     .map((milestone) => {
       const earned = confirmedPoints >= milestone.points;
+      const redeemed = earned && !milestone.unlocksZone && redeemedPoints.has(milestone.points);
       const kind = milestone.unlocksZone ? 'abre zona' : 'premio';
-      return `<span class="${earned ? 'prize-key__earned' : ''}"><strong>${milestone.points}</strong> ${milestone.label} <em>${earned ? 'ganado' : kind}</em></span>`;
+      const status = redeemed ? 'canjeado' : earned ? 'ganado' : kind;
+      return `<span class="${earned ? 'prize-key__earned' : ''} ${redeemed ? 'prize-key__redeemed' : ''}"><strong>${milestone.points}</strong> ${milestone.label} <em>${status}</em></span>`;
     })
     .join('');
 }
 
 function renderPrizeAlert(confirmedPoints: number): string {
   const earnedPrizes = prizeMilestones.filter((milestone) => !milestone.unlocksZone && confirmedPoints >= milestone.points);
-  if (!earnedPrizes.length) return '';
+  const pendingAwards = weeklyProgress.prizeAwards.filter((award) => award.redeemed !== true);
+  if (!earnedPrizes.length && !pendingAwards.length) return '';
   const latestPrize = earnedPrizes.at(-1);
-  if (!latestPrize) return '';
+  const pendingText = pendingAwards.length ? `${pendingAwards.length} premio${pendingAwards.length === 1 ? '' : 's'} por canjear.` : 'Todo canjeado.';
   return `
     <div class="weekly-prize-alert" role="status" aria-live="polite">
       <span aria-hidden="true">🎁</span>
-      <strong>¡Ganaste ${latestPrize.label} esta semana!</strong>
-      <span>Tu maestro mira los puntos confirmados.</span>
+      <strong>${latestPrize ? `¡Ganaste ${latestPrize.label} esta semana!` : 'Tienes premios pendientes.'}</strong>
+      <span>${pendingText} Tu maestro marca cuando lo canjeas.</span>
     </div>
   `;
+}
+
+function renderPrizeCarryoverList(): string {
+  const awards = weeklyProgress.prizeAwards.filter((award) => award.label && award.week_start);
+  if (!awards.length) return '';
+  const items = awards.map((award) => {
+    const status = award.redeemed ? 'canjeado' : 'por canjear';
+    return `<li><strong>${escapeHtml(String(award.label))}</strong> <span>${status}</span> <small>semana ${escapeHtml(String(award.week_start))}</small></li>`;
+  }).join('');
+  return `<ul class="weekly-prize-list" aria-label="Premios ganados">${items}</ul>`;
 }
 
 function renderWeeklyPoints(): string {
@@ -316,6 +335,7 @@ function renderWeeklyPoints(): string {
         ${renderPrizeMilestones()}
       </div>
       ${renderPrizeAlert(confirmedPoints)}
+      ${renderPrizeCarryoverList()}
       <div class="prize-key" aria-label="Premios por puntos">
         ${renderPrizeKey(confirmedPoints)}
       </div>
