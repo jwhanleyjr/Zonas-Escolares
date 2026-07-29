@@ -14,6 +14,22 @@ const students = [{ id: 'student-1', display_name: 'Ana', active: true }];
 }
 
 {
+  const form = new URLSearchParams({ action: 'record_past_complete', student_id: 'student-1', zone: 'matematicas', work_date: '2026-06-26' });
+  const result = validateConfirmationForm(form, students, '2026-06-27');
+  assert.deepEqual(result.errors, [], 'teacher can record verified work for a prior date');
+  assert.equal(result.confirmed, false, 'historical completion uses its dedicated save action');
+}
+
+{
+  const today = new URLSearchParams({ action: 'record_past_complete', student_id: 'student-1', zone: 'matematicas', work_date: '2026-06-27' });
+  const future = new URLSearchParams({ action: 'record_past_complete', student_id: 'student-1', zone: 'matematicas', work_date: '2026-06-28' });
+  const missing = new URLSearchParams({ action: 'record_past_complete', student_id: 'student-1', zone: 'matematicas' });
+  assert.match(validateConfirmationForm(today, students, '2026-06-27').errors.join(' '), /anterior a hoy/i, 'today cannot be recorded through the past-day form');
+  assert.match(validateConfirmationForm(future, students, '2026-06-27').errors.join(' '), /anterior a hoy/i, 'future work cannot be recorded complete');
+  assert.match(validateConfirmationForm(missing, students, '2026-06-27').errors.join(' '), /fecha/i, 'historical completion requires a date');
+}
+
+{
   const form = new URLSearchParams({ action: 'unconfirm', student_id: 'student-1', zone: 'lectura', filter: 'all', review_filter: 'pending' });
   const result = validateConfirmationForm(form, students);
   assert.deepEqual(result.errors, [], 'valid teacher unconfirmation has no validation errors');
