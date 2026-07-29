@@ -10,7 +10,7 @@ export const zoneLabels = {
 };
 
 const zoneIds = new Set(Object.keys(zoneLabels));
-const confirmationActions = new Set(['confirm', 'unconfirm', 'mark_incomplete', 'mark_not_started']);
+const confirmationActions = new Set(['confirm', 'unconfirm', 'mark_incomplete', 'mark_not_started', 'record_past_complete']);
 function minutes(seconds) {
   return `${Math.floor(Number(seconds ?? 0) / 60)} min`;
 }
@@ -35,7 +35,7 @@ function redirectWithFilters(response, filter, zoneFilter, reviewFilter, workDat
   return redirect(response, `/teacher/progress${params.size ? `?${params.toString()}` : ''}`);
 }
 
-export function validateConfirmationForm(form, students) {
+export function validateConfirmationForm(form, students, today = getSchoolDate()) {
   const studentId = String(form.get('student_id') ?? '').trim();
   const zone = String(form.get('zone') ?? '').trim();
   const action = String(form.get('action') ?? '').trim();
@@ -52,6 +52,8 @@ export function validateConfirmationForm(form, students) {
   if (zoneFilter !== 'all' && !zoneIds.has(zoneFilter)) errors.push('Selecciona un filtro de zona válido.');
   if (!['all', 'pending'].includes(reviewFilter)) errors.push('Selecciona un filtro de revisión válido.');
   if (workDate && !isValidDate(workDate)) errors.push('Selecciona una fecha válida.');
+  if (action === 'record_past_complete' && !workDate) errors.push('Selecciona la fecha en que se hizo el trabajo.');
+  if (action === 'record_past_complete' && isValidDate(workDate) && workDate >= today) errors.push('Selecciona un día anterior a hoy.');
 
   return { studentId, zone, action, filter, zoneFilter, reviewFilter, workDate, confirmed: action === 'confirm', errors };
 }
@@ -158,7 +160,7 @@ export default async function handler(request, response) {
 
   if (request.method === 'POST') {
     const form = await readForm(request);
-    const result = validateConfirmationForm(form, studentsForValidation);
+    const result = validateConfirmationForm(form, studentsForValidation, getSchoolDate());
     filter = result.filter;
     zoneFilter = result.zoneFilter;
     reviewFilter = result.reviewFilter;
@@ -166,8 +168,10 @@ export default async function handler(request, response) {
     if (result.errors.length) {
       message = { kind: 'error', text: result.errors[0] };
     } else {
-      const update = progressUpdateForAction(result.action, result.confirmed);
-      const { error } = await supabase.from('zone_progress').update(update).eq('student_id', result.studentId).eq('work_date', workDate).eq('zone', result.zone);
+      const saveRequest = result.action === 'record_past_complete'
+        ? supabase.from('zone_progress').upsert({ student_id: result.studentId, work_date: workDate, zone: result.zone, status: 'finished', teacher_confirmed: true, active_started_at: null }, { onConflict: 'student_id,work_date,zone' })
+        : supabase.from('zone_progress').update(progressUpdateForAction(result.action, result.confirmed)).eq('student_id', result.studentId).eq('work_date', workDate).eq('zone', result.zone);
+      const { error } = await saveRequest;
       if (error) {
         console.error('Teacher progress update failed', error);
         message = { kind: 'error', text: statusMessageForAction(result.action) };
@@ -199,6 +203,9 @@ export default async function handler(request, response) {
   const options = [`<option value="active" ${filter === 'active' ? 'selected' : ''}>Estudiantes activos</option>`, `<option value="all" ${filter === 'all' ? 'selected' : ''}>Todos</option>`, ...studentsForValidation.map((s) => `<option value="${escapeHtml(s.id)}" ${filter === s.id ? 'selected' : ''}>${escapeHtml(s.display_name)}</option>`)].join('');
   const zoneOptions = [`<option value="all" ${zoneFilter === 'all' ? 'selected' : ''}>Todas las zonas</option>`, ...Object.entries(zoneLabels).map(([zone, label]) => `<option value="${escapeHtml(zone)}" ${zoneFilter === zone ? 'selected' : ''}>${escapeHtml(label)}</option>`)].join('');
   const reviewOptions = [`<option value="all" ${reviewFilter === 'all' ? 'selected' : ''}>Mostrar todas</option>`, `<option value="pending" ${reviewFilter === 'pending' ? 'selected' : ''}>Solo pendientes de confirmación</option>`].join('');
+  const studentOptions = studentsForValidation.map((student) => `<option value="${escapeHtml(student.id)}">${escapeHtml(student.display_name)}</option>`).join('');
+  const pastDateMax = escapeHtml(getSchoolDate(new Date(Date.now() - 24 * 60 * 60 * 1000)));
+  const recordZoneOptions = Object.entries(zoneLabels).map(([zone, label]) => `<option value="${escapeHtml(zone)}">${escapeHtml(label)}</option>`).join('');
   const rows = zoneFilter === 'all' ? '' : students.flatMap((s) => {
     const list = (byStudent.get(s.id) ?? [])
       .filter((row) => row.zone === zoneFilter)
@@ -211,6 +218,7 @@ export default async function handler(request, response) {
   const heading = zoneFilter === 'all' ? 'Confirmación por zona' : `Confirmar ${zoneLabels[zoneFilter]} por zona`;
   const tableHead = '<tr><th>Fecha</th><th>Estudiante</th><th>Estado</th><th>Tiempo registrado</th><th>Plataforma</th><th>Confirmación</th><th>Resultado</th></tr>';
   const reportHtml = zoneFilter === 'all' ? groupedReport : (rows ? `<table class="teacher-table"><thead>${tableHead}</thead><tbody>${rows}</tbody></table>` : '<p>No hay zonas completadas para mostrar.</p>');
-  const body = `<section class="teacher-panel"><p>El reporte muestra solo zonas que el estudiante marcó como terminadas. El tiempo mostrado es <strong>tiempo de trabajo registrado</strong>, no prueba de finalización académica. Usa Confirmar completado solo después de revisar la plataforma o tarea correspondiente.</p>${messageHtml}<form class="teacher-filter-form"><label>Estudiantes<select name="student" onchange="this.form.submit()">${options}</select></label><label>Revisar por zona<select name="zone" onchange="this.form.submit()">${zoneOptions}</select></label><label>Confirmación<select name="review" onchange="this.form.submit()">${reviewOptions}</select></label><button class="teacher-button teacher-button--secondary" type="submit">Ver progreso</button></form><h2>${escapeHtml(heading)}</h2>${reportHtml || '<p>No hay zonas completadas para mostrar.</p>'}</section>`;
+  const recordPastForm = studentsForValidation.length ? `<section class="teacher-panel"><h2>Registrar un día anterior</h2><p>Si el estudiante hizo el trabajo pero olvidó marcarlo, puedes registrarlo aquí después de verificar la tarea o plataforma. Se guardará como completado y confirmado por el maestro; no se añadirá tiempo de trabajo registrado.</p><form method="post" class="teacher-filter-form"><input type="hidden" name="filter" value="${escapeHtml(filter)}"><input type="hidden" name="zone_filter" value="${escapeHtml(zoneFilter)}"><input type="hidden" name="review_filter" value="${escapeHtml(reviewFilter)}"><label>Estudiante<select name="student_id" required>${studentOptions}</select></label><label>Fecha anterior<input name="work_date" type="date" max="${pastDateMax}" required></label><label>Zona<select name="zone" required>${recordZoneOptions}</select></label><button class="teacher-button" name="action" value="record_past_complete" type="submit">Registrar como completado</button></form></section>` : '';
+  const body = `${recordPastForm}<section class="teacher-panel"><p>El reporte muestra solo zonas que el estudiante marcó como terminadas o que el maestro registró después de verificar el trabajo. El tiempo mostrado es <strong>tiempo de trabajo registrado</strong>, no prueba de finalización académica. Usa Confirmar completado solo después de revisar la plataforma o tarea correspondiente.</p>${messageHtml}<form class="teacher-filter-form"><label>Estudiantes<select name="student" onchange="this.form.submit()">${options}</select></label><label>Revisar por zona<select name="zone" onchange="this.form.submit()">${zoneOptions}</select></label><label>Confirmación<select name="review" onchange="this.form.submit()">${reviewOptions}</select></label><button class="teacher-button teacher-button--secondary" type="submit">Ver progreso</button></form><h2>${escapeHtml(heading)}</h2>${reportHtml || '<p>No hay zonas completadas para mostrar.</p>'}</section>`;
   sendHtml(response, page('Progreso', profile, body));
 }
