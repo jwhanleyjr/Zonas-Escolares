@@ -626,6 +626,29 @@ h1 {
   box-shadow: inset 0 0 0 2px rgba(43, 33, 87, 0.12);
 }
 
+.weekly-totals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  margin-top: 0.9rem;
+  font-size: 0.95rem;
+  font-weight: 900;
+}
+
+.weekly-total {
+  padding: 0.35rem 0.65rem;
+  border-radius: 999px;
+  color: #2b2157;
+}
+
+.weekly-total--confirmed {
+  background: #bdf1c9;
+}
+
+.weekly-total--pending {
+  background: #fff2a3;
+}
+
 .weekly-bar__fill {
   position: absolute;
   inset: 0;
@@ -636,6 +659,7 @@ h1 {
 
 .weekly-bar__confirmed,
 .weekly-bar__pending {
+  flex: 0 0 var(--segment-width);
   height: 100%;
 }
 
