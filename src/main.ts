@@ -335,13 +335,15 @@ function renderWeeklyPoints(): string {
       <div class="weekly-panel__header">
         <div>
           <p class="weekly-panel__eyebrow">⭐ Puntos de la semana</p>
-          <h2>${finishedPoints} de 25 puntos</h2>
+          <h2>${finishedPoints} de ${weeklyPrizeMaxPoints} zonas terminadas</h2>
           <p>Meta: 25 puntos. Máximo: 30 puntos.</p>
         </div>
       </div>
-      <div class="weekly-bar" aria-hidden="true">
-        <span class="weekly-bar__confirmed" style="width: ${confirmedPercent}%"></span>
-        <span class="weekly-bar__pending" style="left: ${confirmedPercent}%; width: ${pendingReviewPercent}%"></span>
+      <div class="weekly-bar" role="img" aria-label="${confirmedPoints} zonas confirmadas y ${pendingReviewPoints} zonas terminadas esperando revisión">
+        <span class="weekly-bar__fill" aria-hidden="true">
+          <span class="weekly-bar__confirmed" style="width: ${confirmedPercent}%"></span>
+          <span class="weekly-bar__pending" style="width: ${pendingReviewPercent}%"></span>
+        </span>
         ${renderPrizeMilestones()}
       </div>
       ${renderPrizeAlert(confirmedPoints)}
