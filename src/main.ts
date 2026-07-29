@@ -119,7 +119,8 @@ async function syncProgress(action: string, zoneId: string): Promise<void> {
       state = progressFromServer(data.progress as ServerZoneProgress[], activeZoneDefinitions);
       saveState(state, currentStudentId);
     }
-    weeklyProgress = parseWeeklyProgress(data.weeklyProgress);
+    const nextWeeklyProgress = parseWeeklyProgress(data.weeklyProgress);
+    if (nextWeeklyProgress) weeklyProgress = nextWeeklyProgress;
     render();
   } catch (error) {
     console.error(error);
@@ -252,11 +253,12 @@ function renderProgressStars(completed: number): string {
   return Array.from({ length: dailyGoal }, (_, index) => `<span class="star ${index < completed ? 'star--filled' : ''}" aria-hidden="true">★</span>`).join('');
 }
 
-function parseWeeklyProgress(value: unknown): WeeklyProgressSummary {
-  if (!value || typeof value !== 'object') return { progress: [], prizeAwards: [] };
+function parseWeeklyProgress(value: unknown): WeeklyProgressSummary | null {
+  if (!value || typeof value !== 'object') return null;
   const candidate = value as { weekStart?: unknown; weekEnd?: unknown; progress?: unknown; prizeAwards?: unknown };
+  if (!Array.isArray(candidate.progress)) return null;
   const summary: WeeklyProgressSummary = {
-    progress: Array.isArray(candidate.progress) ? candidate.progress as WeeklyProgressRow[] : [],
+    progress: candidate.progress as WeeklyProgressRow[],
     prizeAwards: Array.isArray(candidate.prizeAwards) ? candidate.prizeAwards as WeeklyPrizeAward[] : [],
   };
   if (typeof candidate.weekStart === 'string') summary.weekStart = candidate.weekStart;
@@ -339,10 +341,14 @@ function renderWeeklyPoints(): string {
           <p>Meta: 25 puntos. Máximo: 30 puntos.</p>
         </div>
       </div>
+      <div class="weekly-totals" aria-live="polite">
+        <span class="weekly-total weekly-total--confirmed"><strong>${confirmedPoints}</strong> confirmadas</span>
+        <span class="weekly-total weekly-total--pending"><strong>${pendingReviewPoints}</strong> terminadas, esperando revisión</span>
+      </div>
       <div class="weekly-bar" role="img" aria-label="${confirmedPoints} zonas confirmadas y ${pendingReviewPoints} zonas terminadas esperando revisión">
         <span class="weekly-bar__fill" aria-hidden="true">
-          <span class="weekly-bar__confirmed" style="width: ${confirmedPercent}%"></span>
-          <span class="weekly-bar__pending" style="width: ${pendingReviewPercent}%"></span>
+          <span class="weekly-bar__confirmed" style="--segment-width: ${confirmedPercent}%"></span>
+          <span class="weekly-bar__pending" style="--segment-width: ${pendingReviewPercent}%"></span>
         </span>
         ${renderPrizeMilestones()}
       </div>
@@ -604,7 +610,8 @@ async function loadServerProgress(): Promise<void> {
 
     state = progressFromServer(data.progress as ServerZoneProgress[], activeZoneDefinitions);
     openZoneId = state.zones.find((zone) => zone.status === 'En progreso')?.id ?? openZoneId;
-    weeklyProgress = parseWeeklyProgress(data.weeklyProgress);
+    const nextWeeklyProgress = parseWeeklyProgress(data.weeklyProgress);
+    if (nextWeeklyProgress) weeklyProgress = nextWeeklyProgress;
     saveState(state, currentStudentId);
   } catch (error) {
     console.error(error);
