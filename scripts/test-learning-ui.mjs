@@ -45,8 +45,8 @@ const server = createServer(async (req, res) => {
       res.writeHead(200, { 'content-type': 'text/html' });
       return res.end(staffPage('Plan de aprendizaje', { display_name: 'Maestro de prueba', role: 'teacher' }, '<div id="staff-learning"></div><script type="module" src="/assets/staff.js"></script>'));
     }
-    const file = url.pathname.startsWith('/assets/') ? resolve(`dist${url.pathname}`) : resolve('dist/zones/index.html');
-    const type = { '.css': 'text/css', '.js': 'text/javascript', '.html': 'text/html' }[extname(file)];
+    const file = /^\/(assets|art)\//.test(url.pathname) ? resolve(`dist${url.pathname}`) : resolve('dist/zones/index.html');
+    const type = { '.css': 'text/css', '.js': 'text/javascript', '.html': 'text/html', '.webp': 'image/webp' }[extname(file)];
     res.writeHead(200, { 'content-type': type }); res.end(await readFile(file));
   } catch (e) { res.writeHead(500); res.end(String(e)); }
 });
@@ -62,6 +62,14 @@ try {
   await page.goto(`${origin}/zones`);
   await expect(page.locator('.zone-card')).toHaveCount(8);
   await expect(page.getByText('Mi meta de hoy: 0 de 6 zonas')).toBeVisible();
+  await expect.poll(() => page.locator('.story-art').evaluate(img => img.complete && img.naturalWidth > 0)).toBe(true);
+  for (const width of [1024, 800, 390]) {
+    await page.setViewportSize({ width, height: 1000 });
+    await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await expect(page.locator('.open-zone').first()).toHaveCSS('min-height', '48px');
+    await page.screenshot({ path: resolve(artifacts, `student-board-${width}.png`), fullPage: true });
+  }
+  await page.setViewportSize({ width: 1280, height: 1000 });
   await page.screenshot({ path: resolve(artifacts, 'student-board-desktop.png'), fullPage: true });
   await page.setViewportSize({ width: 800, height: 1100 });
   await page.screenshot({ path: resolve(artifacts, 'student-board-tablet.png'), fullPage: true });
