@@ -1,4 +1,13 @@
-import { cp, mkdir, writeFile } from 'node:fs/promises';
+import { copyFile, mkdir, readdir, writeFile } from 'node:fs/promises';
+
+// Copy only paths inside the build inputs; avoid traversing parent directories.
+async function cp(source, destination, options = {}) {
+  if (!options.recursive) return copyFile(source, destination);
+  await mkdir(destination, { recursive: true });
+  for (const entry of await readdir(source, { withFileTypes: true })) {
+    await cp(`${source}/${entry.name}`, `${destination}/${entry.name}`, { recursive: entry.isDirectory() });
+  }
+}
 
 const supabaseUrl =
   process.env.NEXT_PUBLIC_SUPABASE_URL ??
@@ -32,3 +41,5 @@ await writeFile(
   `window.ZONAS_SUPABASE_CONFIG = {\n  url: ${JSON.stringify(supabaseUrl)},\n  anonKey: ${JSON.stringify(supabaseAnonKey)},\n};\n`,
 );
 await cp('public/styles.css', 'dist/assets/styles.css');
+
+await cp('public/learning.css', 'dist/assets/learning.css');

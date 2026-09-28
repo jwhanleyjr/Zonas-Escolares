@@ -594,27 +594,6 @@ h1 {
   font-weight: 900;
 }
 
-.reward-box {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem;
-  justify-content: flex-end;
-  max-width: 21rem;
-}
-
-.reward-box strong,
-.reward-box span {
-  padding: 0.45rem 0.7rem;
-  border-radius: 999px;
-  background: #fff0f7;
-  font-weight: 1000;
-}
-
-.reward-box strong {
-  color: #3b2b00;
-  background: #ffdf3f;
-}
-
 .weekly-bar {
   position: relative;
   height: 2.8rem;
@@ -703,26 +682,6 @@ h1 {
   font-weight: 1000;
   line-height: 1;
   text-align: center;
-}
-
-.prize-key {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
-  gap: 0.4rem;
-  margin-bottom: 0.75rem;
-  color: #3b2b00;
-  font-size: 0.9rem;
-  font-weight: 1000;
-}
-
-.prize-key span {
-  padding: 0.35rem 0.5rem;
-  border-radius: 0.75rem;
-  background: #fff6bd;
-}
-
-.prize-key strong {
-  color: #7a3bd1;
 }
 
 .weekly-legend {
@@ -834,10 +793,6 @@ a:focus-visible {
   .helper-panel {
     align-items: stretch;
     flex-direction: column;
-  }
-
-  .reward-box {
-    justify-content: flex-start;
   }
 
   .helper-panel form {
@@ -1540,78 +1495,4 @@ body.teacher-page {
   .teacher-messages {
     grid-template-columns: 1fr;
   }
-}
-
-.weekly-prize-alert {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.45rem 0.75rem;
-  align-items: center;
-  margin: 0.85rem 0;
-  padding: 0.75rem 0.9rem;
-  border: 3px solid #ffffff;
-  border-radius: 1rem;
-  color: #3b2b00;
-  background: linear-gradient(135deg, #fff6bd, #ffdf3f);
-  box-shadow: 0 0.35rem 0 rgba(214, 159, 0, 0.35);
-  font-weight: 1000;
-}
-
-.weekly-prize-alert span:last-child {
-  color: #58457e;
-}
-
-.prize-key em {
-  display: block;
-  margin-top: 0.15rem;
-  color: #58457e;
-  font-size: 0.78rem;
-  font-style: normal;
-}
-
-.prize-key__earned {
-  border: 2px solid #23c552;
-  background: #e7fbe8 !important;
-}
-
-.prize-key__redeemed {
-  border-color: #7c3aed;
-  background: #ede9fe !important;
-}
-
-
-.weekly-prize-list {
-  display: grid;
-  gap: 0.45rem;
-  margin: 0.85rem 0;
-  padding: 0;
-  list-style: none;
-}
-
-.weekly-prize-list li {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.35rem 0.65rem;
-  align-items: center;
-  padding: 0.65rem 0.8rem;
-  border: 2px solid #d8cdf4;
-  border-radius: 0.85rem;
-  background: #fff;
-}
-
-.weekly-prize-list span {
-  font-weight: 900;
-  color: #58457e;
-}
-
-.weekly-prize-list small {
-  color: #5d6b7a;
-}
-
-.weekly-prize-table {
-  margin-top: 0.85rem;
-}
-
-.weekly-prize-row--earned td {
-  background: #f0fdf4;
 }
