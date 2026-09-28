@@ -1,5 +1,5 @@
 import { strict as assert } from 'node:assert';
-import { completedProgressByZone, progressUpdateForAction, validateConfirmationForm, zoneLabels } from './progress.js';
+import { completedProgressByZone, progressUpdateForAction, validateConfirmationForm, zoneLabels } from './history.js';
 
 const students = [{ id: 'student-1', display_name: 'Ana', active: true }];
 

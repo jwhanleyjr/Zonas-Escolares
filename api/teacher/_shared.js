@@ -91,11 +91,11 @@ export async function readForm(request) {
 }
 
 export function page(title, profile, body) {
-  const nav = [['/teacher', 'Dashboard'], ['/teacher/students', 'Estudiantes'], ['/teacher/kami', 'Clases Diversas'], ['/teacher/progress', 'Progreso'], ['/teacher/messages', 'Mensajes'], ['/teacher/settings', 'Configuración']].map(([href, label]) => `<a class="teacher-nav__link" href="${href}">${label}</a>`).join('');
-  return `<!doctype html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>${escapeHtml(title)} - Zonas Escolares</title><link rel="stylesheet" href="/assets/styles.css"></head><body class="teacher-page"><main class="teacher-shell"><nav class="teacher-nav"><a class="teacher-nav__home" href="/teacher">Panel del maestro</a><div>${nav}</div><form method="post" action="/api/teacher/logout"><button class="teacher-button" type="submit">Salir</button></form></nav><header class="teacher-header"><h1>${escapeHtml(title)}</h1><p>${escapeHtml(profile.display_name || 'Usuario')} · ${escapeHtml(profile.role)}</p></header>${body}</main></body></html>`;
+  const nav = [['/teacher', 'Dashboard'], ['/teacher/students', 'Estudiantes'], ['/teacher/zones', 'Zonas'], ['/teacher/assignments', 'Asignaciones'], ['/teacher/settings/goals', 'Metas diarias'], ['/teacher/progress', 'Progreso'], ['/teacher/messages', 'Mensajes'], ['/teacher/settings', 'Configuración']].map(([href, label]) => `<a class="teacher-nav__link" href="${href}">${label}</a>`).join('');
+  return `<!doctype html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>${escapeHtml(title)} - Zonas Escolares</title><link rel="stylesheet" href="/assets/styles.css"><link rel="stylesheet" href="/assets/learning.css"></head><body class="teacher-page"><main class="teacher-shell"><nav class="teacher-nav"><a class="teacher-nav__home" href="/teacher">Panel del maestro</a><div>${nav}</div><form method="post" action="/api/teacher/logout"><button class="teacher-button" type="submit">Salir</button></form></nav><header class="teacher-header"><h1>${escapeHtml(title)}</h1><p>${escapeHtml(profile.display_name || 'Usuario')} · ${escapeHtml(profile.role)}</p></header>${body}</main></body></html>`;
 }
 
 export function sendHtml(response, html, status = 200) {
-  response.writeHead(status, { 'content-type': 'text/html; charset=utf-8' });
+  response.writeHead(status, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' });
   response.end(html);
 }

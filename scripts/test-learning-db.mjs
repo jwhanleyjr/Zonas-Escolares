@@ -1,0 +1,113 @@
+import { PGlite } from '@electric-sql/pglite';
+import { readFile, readdir } from 'node:fs/promises';
+import assert from 'node:assert/strict';
+
+const db = new PGlite();
+const sql = s => db.exec(s);
+const one = async s => (await db.query(s)).rows[0];
+const s1 = '10000000-0000-0000-0000-000000000001';
+const s2 = '10000000-0000-0000-0000-000000000002';
+const u1 = '20000000-0000-0000-0000-000000000001';
+const u2 = '20000000-0000-0000-0000-000000000002';
+const teacher = '20000000-0000-0000-0000-000000000003';
+const admin = '20000000-0000-0000-0000-000000000004';
+async function asUser(id) { await sql(`reset role; set role authenticated; select set_config('request.jwt.claim.sub', '${id}', false);`); }
+async function manage(change) { await db.query('select public.manage_learning_plan($1::jsonb)', [JSON.stringify(change)]); }
+async function action(zone, action) { await db.query('select public.learning_zone_action($1,$2)', [zone, action]); }
+let count = 0;
+async function check(name, fn) { await fn(); count++; console.log(`PASS ${name}`); }
+try {
+  await sql(`create role anon; create role authenticated; create schema auth;
+    create table auth.users(id uuid primary key, email text, raw_user_meta_data jsonb default '{}');
+    create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$;
+    grant usage on schema auth, public to authenticated, anon; grant execute on function auth.uid() to authenticated, anon;`);
+  const files = (await readdir('supabase/migrations')).sort();
+  const migration = files.find(f => f.endsWith('_teen_learning_plans.sql'));
+  for (const file of files.filter(f => f !== migration)) await sql(await readFile(`supabase/migrations/${file}`, 'utf8'));
+  await sql(`insert into auth.users(id,email) values ('${u1}','one@test.local'),('${u2}','two@test.local'),('${teacher}','teacher@test.local'),('${admin}','admin@test.local');
+    update public.profiles set active=true, role='student';
+    update public.profiles set role='teacher' where id='${teacher}'; update public.profiles set role='admin' where id='${admin}';
+    insert into public.students(id,profile_id,display_name) values ('${s1}','${u1}','Uno'),('${s2}','${u2}','Dos');
+    insert into public.zone_progress(student_id,zone,work_date,recorded_seconds,status,teacher_confirmed) values('${s1}','lectura','2026-07-01',300,'finished',true);`);
+  const legacy = JSON.stringify((await db.query('select * from public.zone_progress order by id')).rows);
+  await sql(await readFile(`supabase/migrations/${migration}`, 'utf8'));
+  await check('legacy progress preserved', async () => assert.equal(JSON.stringify((await db.query('select * from public.zone_progress order by id')).rows), legacy));
+  await check('eight zones disabled by default', async () => {
+    assert.equal((await one('select count(*)::int n from public.learning_zones')).n, 8);
+    assert.equal((await one('select count(*)::int n from public.learning_assignments where enabled')).n, 0);
+  });
+  await asUser(teacher);
+  const task = { title: 'Práctica', instructions: '1. Lee\n2. Explica', description: '', platform: '', url: '', completion_method: 'student', target_minutes: null, assignment_date: '2026-09-28' };
+  const set = (id, zone, extra = {}) => manage({ action: 'assignment', student_ids: [id], zone, enabled: true, assignment: { ...task, ...extra } });
+  await set(s1, 'reading'); await set(s2, 'reading', { url: 'https://example.org/two' });
+  await check('bulk toggles preserve links and individual edits', async () => {
+    await manage({ action: 'toggle', student_ids: [s1, s2], zone: 'reading', enabled: false, confirmed: true });
+    await manage({ action: 'toggle', student_ids: [s1, s2], zone: 'reading', enabled: true, confirmed: true });
+    await manage({ action: 'toggle', student_ids: [s1], zone: 'reading', enabled: false });
+    assert.equal((await one(`select enabled from public.learning_assignments where student_id='${s2}' and zone='reading'`)).enabled, true);
+    assert.equal((await one(`select url from public.learning_assignments where student_id='${s2}' and zone='reading'`)).url, 'https://example.org/two');
+    await manage({ action: 'toggle', student_ids: [s1], zone: 'reading', enabled: true });
+  });
+  await check('confirmation and impossible goals enforced', async () => {
+    await assert.rejects(manage({ action: 'toggle', student_ids: [s1,s2], zone: 'reading', enabled: false }));
+    await assert.rejects(manage({ action: 'goal', student_ids: [s1], goal: 6 }));
+    await manage({ action: 'goal', student_ids: [s1], goal: 1 });
+    await assert.rejects(manage({ action: 'toggle', student_ids: [s1], zone: 'reading', enabled: false }));
+  });
+  await set(s1, 'exercise', { completion_method: 'checkbox' });
+  await set(s1, 'typing', { completion_method: 'timed', target_minutes: 1 });
+  await set(s1, 'matematica', { completion_method: 'timed', target_minutes: 1 });
+  await set(s1, 'english', { completion_method: 'teacher' });
+  await set(s1, 'naturales', { completion_method: 'external' });
+  await asUser(u1);
+  await check('RLS denies other students and disabled zones', async () => {
+    const rows = (await db.query('select * from public.learning_assignments')).rows;
+    assert.equal(rows.length, 6); assert.ok(rows.every(r => r.student_id === s1 && r.enabled));
+    assert.equal((await one(`select count(*)::int n from public.learning_assignments where student_id='${s2}'`)).n, 0);
+    await assert.rejects(action('lengua_espanola','finish'));
+  });
+  await check('student cannot manage plans or write arbitrary time', async () => {
+    await assert.rejects(manage({ action: 'goal', student_ids: [s1], goal: 1 }));
+    await assert.rejects(sql('update public.learning_assignments set enabled=true'));
+    await assert.rejects(sql(`insert into public.learning_progress(student_id,zone,work_date,recorded_seconds) values('${s1}','typing',current_date,9000)`));
+  });
+  await check('exercise without timer and free zone order', async () => {
+    await action('exercise','finish'); await action('reading','finish');
+    assert.equal((await one("select recorded_seconds from public.learning_progress where zone='exercise'")).recorded_seconds, 0);
+    await assert.rejects(action('exercise','start'));
+  });
+  await check('student cannot forge teacher or external completion', async () => {
+    await assert.rejects(action('english','finish')); await assert.rejects(action('naturales','finish'));
+  });
+  await check('timer switching saves and pauses; early finish rejected', async () => {
+    await action('typing','start'); await assert.rejects(action('typing','finish'));
+    await sql(`reset role; update public.learning_progress set active_started_at=now()-interval '70 seconds' where student_id='${s1}' and zone='typing';`);
+    await asUser(u1); await action('matematica','start');
+    const previous = await one("select * from public.learning_progress where zone='typing'");
+    assert.equal(previous.status,'paused'); assert.ok(previous.recorded_seconds >= 70);
+    await action('typing','finish'); await action('matematica','pause');
+    assert.equal((await one('select count(*)::int n from public.learning_progress where active_started_at is not null')).n,0);
+  });
+  await asUser(teacher);
+  await check('teacher confirms reviewed work without inventing time', async () => {
+    await manage({ action:'confirm', student_ids:[s1], zone:'english' });
+    const row = await one("select * from public.learning_progress where zone='english'");
+    assert.equal(row.teacher_confirmed,true); assert.equal(row.recorded_seconds,0);
+  });
+  await check('reuse preserves individual method and availability', async () => {
+    await manage({ action:'copy', student_ids:[s2], source_student:s1, zone:'typing' });
+    const row = await one(`select * from public.learning_assignments where student_id='${s2}' and zone='typing'`);
+    assert.equal(row.enabled,false); assert.equal(row.completion_method,'student'); assert.equal(row.title,'Práctica');
+  });
+  await check('bulk failure rolls back all students', async () => {
+    await assert.rejects(manage({ action:'goal', student_ids:[s1,s2], goal:2, confirmed:true }));
+    assert.equal((await one(`select daily_goal from public.learning_plans where student_id='${s1}'`)).daily_goal,1);
+  });
+  await asUser(admin);
+  await check('admin can manage plans', async () => { await manage({ action:'goal', student_ids:[s1], goal:2 }); });
+  await sql(`reset role; update public.profiles set active=false where id='${teacher}';`); await asUser(teacher);
+  await check('inactive staff denied', async () => { await assert.rejects(manage({ action:'goal',student_ids:[s1],goal:1 })); });
+  await sql('reset role; set role anon;');
+  await check('anonymous access denied', async () => { await assert.rejects(sql('select * from public.learning_assignments')); await assert.rejects(action('reading','finish')); });
+  console.log(`${count} database checks passed in isolated PostgreSQL (PGlite). No remote database changed.`);
+} finally { await db.close(); }

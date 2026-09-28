@@ -1,0 +1,91 @@
+:root { --ink: #182231; --paper: #f3efe4; --accent: #d9f269; }
+* { box-sizing: border-box; }
+.student-page { margin: 0; background: var(--paper); color: var(--ink); font: 17px/1.5 system-ui, sans-serif; background-image: radial-gradient(#18223112 1px, transparent 1px); background-size: 8px 8px; }
+.comic-shell { max-width: 1320px; margin: auto; padding: 24px 32px; }
+.comic-shell button, .comic-shell a.activity-link, .open-zone, .back-link { min-height: 48px; padding: 12px 18px; border: 2px solid var(--ink); border-radius: 0; background: white; color: var(--ink); font: 800 15px/1.4 system-ui, sans-serif; text-decoration: none; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
+:focus-visible { outline: 4px solid #2258bf; outline-offset: 4px; }
+button:disabled { opacity: .6; cursor: wait; }
+.comic-header { display: flex; justify-content: space-between; align-items: center; gap: 24px; padding-bottom: 22px; border-bottom: 3px solid var(--ink); }
+.wordmark { color: var(--ink); font-size: 36px; font-weight: 950; letter-spacing: -2px; text-decoration: none; line-height: 1; }
+.wordmark span { display: block; font-size: 10px; letter-spacing: 1px; margin-top: 9px; }
+.comic-header > div { display: flex; gap: 10px; }
+.comic-header form { margin: 0; }
+.save-status { min-height: 25px; margin: 5px 0; font-weight: 700; }
+.goal-panel { background: var(--ink); color: white; display: grid; grid-template-columns: 1.1fr 1fr; gap: 40px; padding: 40px; border: 3px solid var(--ink); box-shadow: 8px 8px 0 #b1bdcb; margin-bottom: 36px; }
+.eyebrow { font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 1.3px; }
+.goal-panel h1 { font-size: clamp(36px, 5.5vw, 68px); letter-spacing: -3px; line-height: .98; margin: 18px 0; font-weight: 950; }
+.goal-panel p { color: #e6e9ee; }
+.goal-meter { align-self: center; padding: 25px; border: 2px solid #788494; background: #263244; transform: rotate(-1deg); }
+.goal-meter strong { font-size: 23px; }
+.goal-meter progress { width: 100%; height: 25px; margin-top: 20px; accent-color: var(--accent); border: 2px solid white; }
+progress::-webkit-progress-bar { background: #eef0f2; }
+progress::-webkit-progress-value { background: #769c1c; }
+.goal-meter progress::-webkit-progress-value { background: var(--accent); }
+.choice-board { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 22px; }
+.comic-panel { border: 3px solid var(--ink); box-shadow: 5px 5px 0 var(--ink); background: white; padding: 24px; }
+.zone-card { --zone-color: #d5e7ff; background: linear-gradient(155deg, var(--zone-color) 0 33%, white 33%); display: flex; flex-direction: column; min-height: 310px; }
+.zone-typing { --zone-color: #b8d4f7; }
+.zone-reading { --zone-color: #f6c68c; }
+.zone-exercise { --zone-color: #d9eb94; }
+.zone-english { --zone-color: #cbbbec; }
+.zone-lengua_espanola { --zone-color: #f0b5bb; }
+.zone-naturales { --zone-color: #a8d7c3; }
+.zone-matematica { --zone-color: #e9d982; }
+.zone-ixl_extra_practice { --zone-color: #b6c9db; }
+.card-top { position: relative; display: flex; justify-content: space-between; align-items: start; min-height: 78px; }
+.chapter { font-weight: 900; font-size: 13px; }
+.zone-symbol { font: 900 42px/1.2 system-ui; transform: rotate(-8deg); }
+.status-chip { font-size: 12px; font-weight: 800; border: 1px solid var(--ink); background: white; padding: 4px 7px; position: absolute; bottom: 0; right: 0; }
+.zone-card h2 { margin: 18px 0 5px; font-size: 25px; line-height: 1.1; letter-spacing: -1px; }
+.zone-card p { font-size: 14px; margin: 8px 0 20px; }
+.card-progress { height: 8px; background: #e5e9ed; margin-top: auto; margin-bottom: 16px; }
+.card-progress span { display: block; height: 100%; background: var(--ink); }
+.open-zone { width: 100%; justify-content: space-between; background: var(--ink); color: white; }
+.is-complete .status-chip { background: var(--accent); }
+.back-link { margin: 10px 0 24px; }
+.zone-detail { max-width: 850px; margin: auto; border-top: 16px solid var(--zone-color); }
+.zone-detail h1 { font-size: clamp(32px, 5vw, 52px); line-height: 1.1; letter-spacing: -1px; }
+.zone-detail section { background: #f4f6f8; border-left: 5px solid var(--ink); padding: 20px; margin: 24px 0; }
+.instructions { white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.8; }
+.zone-actions { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 24px; }
+.comic-shell a.activity-link { background: var(--accent); }
+.timer { font-size: 32px; font-variant-numeric: tabular-nums; }
+.small-note { font-size: 13px; }
+.offline-check { display: flex; align-items: center; gap: 15px; font-weight: 800; padding: 20px; border: 2px solid var(--ink); }
+.offline-check input { width: 32px; height: 32px; }
+.completion-stamp { background: var(--accent); border: 2px solid var(--ink); padding: 18px; font-weight: 900; }
+.comic-footer { text-align: center; font-size: 11px; font-weight: 900; letter-spacing: 3px; margin: 45px 0 20px; }
+.empty-state { grid-column: 1 / -1; }
+.messages-panel { margin-top: 25px; }
+.messages-panel textarea { width: 100%; min-height: 100px; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.staff-toolbar { display: flex; gap: 14px; flex-wrap: wrap; align-items: end; margin: 20px 0; }
+#staff-learning button, #staff-learning input, #staff-learning select, #staff-learning textarea { font: inherit; min-height: 44px; }
+#staff-learning button { padding: 8px 12px; border: 1px solid #8c98a8; border-radius: 5px; background: #fff; color: #162334; cursor: pointer; }
+#staff-learning label { display: flex; flex-direction: column; gap: 6px; }
+#staff-learning input, #staff-learning select, #staff-learning textarea { padding: 8px; border: 1px solid #738195; border-radius: 4px; }
+.matrix-scroll { position: relative; max-width: 100%; max-height: 68vh; overflow: auto; border: 1px solid #c0c9d3; isolation: isolate; }
+.zone-matrix { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 14px; }
+.zone-matrix caption { text-align: left; padding: 12px; }
+.zone-matrix th, .zone-matrix td { padding: 14px; min-width: 165px; border-right: 1px solid #d7dee6; border-bottom: 1px solid #d7dee6; background: white; vertical-align: top; }
+.zone-matrix thead th { position: sticky; top: 0; z-index: 3; background: #e9eef4; text-align: left; }
+.zone-matrix tr > th:first-child { position: sticky; left: 0; z-index: 2; min-width: 220px; background: #f5f7fa; }
+.zone-matrix thead th:first-child { z-index: 4; }
+.zone-matrix th label { flex-direction: row !important; align-items: center; }
+.zone-matrix small { display: block; }
+.zone-matrix details button { display: block; width: 100%; margin-top: 5px; }
+.zone-matrix summary { cursor: pointer; padding: 12px 0; font-weight: 400; }
+.zone-matrix .enabled-cell { background: #eff8f2; }
+#staff-learning .zone-switch { width: 60px; height: 44px; background: #737f8e; border-radius: 24px; display: block; padding: 6px; }
+.zone-switch > span:first-child { display: block; width: 28px; height: 28px; background: white; border: 1px solid #304052; border-radius: 50%; }
+#staff-learning .zone-switch[aria-checked="true"] { background: #206242; }
+.zone-switch[aria-checked="true"] > span:first-child { margin-left: auto; }
+.edit-assignment { margin-top: 8px; font-size: 12px !important; }
+.staff-warning { color: #8c3500; font-weight: 650; }
+.staff-feedback { min-height: 25px; font-weight: 700; }
+.assignment-dialog { position: fixed; inset: 3vh 0; z-index: 20; overflow: auto; max-height: 94vh; width: min(700px, 94vw); padding: 28px; border: 2px solid #1c2d43; box-shadow: 0 0 0 100vmax #0c182ac9; }
+.assignment-dialog form { display: grid; gap: 14px; }
+.assignment-dialog section { margin-top: 30px; }
+.zone-matrix input[type="number"] { max-width: 90px; }
+@media (max-width: 1050px) { .choice-board { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 650px) { .comic-shell { padding: 18px; } .comic-header { gap: 10px; flex-wrap: wrap; } .goal-panel { grid-template-columns: 1fr; padding: 24px; gap: 15px; } .goal-meter { padding: 18px; } .choice-board { grid-template-columns: 1fr; } .zone-card { min-height: 280px; } .zone-detail { padding: 18px; } }

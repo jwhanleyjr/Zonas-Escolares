@@ -15,10 +15,6 @@
       "destination": "/zones/index.html"
     },
     {
-      "source": "/teacher",
-      "destination": "/api/teacher"
-    },
-    {
       "source": "/teacher/students",
       "destination": "/api/teacher/students"
     },
@@ -31,16 +27,40 @@
       "destination": "/api/teacher/kami"
     },
     {
-      "source": "/teacher/progress",
-      "destination": "/api/teacher/progress"
-    },
-    {
       "source": "/teacher/messages",
       "destination": "/api/teacher/messages"
     },
     {
+      "source": "/teacher",
+      "destination": "/api/teacher/learning"
+    },
+    {
+      "source": "/teacher/zones",
+      "destination": "/api/teacher/learning"
+    },
+    {
+      "source": "/teacher/assignments",
+      "destination": "/api/teacher/learning"
+    },
+    {
       "source": "/teacher/settings",
-      "destination": "/api/teacher/settings"
+      "destination": "/api/teacher/learning"
+    },
+    {
+      "source": "/teacher/settings/goals",
+      "destination": "/api/teacher/learning"
+    },
+    {
+      "source": "/teacher/progress",
+      "destination": "/api/teacher/learning"
+    },
+    {
+      "source": "/teacher/history",
+      "destination": "/api/teacher/history"
+    },
+    {
+      "source": "/student/zones/:zone",
+      "destination": "/zones/index.html"
     }
   ]
 }
