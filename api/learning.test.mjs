@@ -4,8 +4,8 @@ import { isComplete, summarizePlan, validateAssignment, zoneLabels, readJson } f
 import { validateChange } from './teacher/learning.js';
 import { getTeacherAccessDecision } from './teacher/_validation.js';
 const assignment = { zone: 'exercise', enabled: true, completion_method: 'checkbox', title: 'Camina', instructions: '1. Camina\n2. Respira', url: '' };
-test('eight zones and individual daily completion rules', () => {
-  assert.equal(Object.keys(zoneLabels).length, 8);
+test('nine zones and individual daily completion rules', () => {
+  assert.equal(Object.keys(zoneLabels).length, 9);
   assert.deepEqual(summarizePlan([assignment, { ...assignment, zone: 'reading', enabled: false }], [{ zone: 'exercise', status: 'finished' }, { zone: 'reading', status: 'finished' }], 2), { enabled: 1, completed: 1, goal: 2, impossible: true });
   assert.equal(isComplete({ status: 'finished', recorded_seconds: 600, teacher_confirmed: false }, { completion_method: 'teacher' }), false);
   assert.equal(isComplete({ status: 'finished', teacher_confirmed: true }, { completion_method: 'external' }), true);

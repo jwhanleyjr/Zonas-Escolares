@@ -11,7 +11,8 @@
     "test": "tsc -p tsconfig.test.json && node --test api/*.test.mjs api/teacher/*.test.mjs api/auth/*.test.mjs",
     "supabase:push": "supabase db push",
     "test:db": "node scripts/test-learning-db.mjs",
-    "test:ui": "node scripts/test-learning-ui.mjs"
+    "test:ui": "node scripts/test-learning-ui.mjs",
+    "test:journal": "node scripts/test-journal-ui.mjs"
   },
   "engines": {
     "node": "24.x"

@@ -61,6 +61,14 @@
     {
       "source": "/student/zones/:zone",
       "destination": "/zones/index.html"
+    },
+    {
+      "source": "/student/journal",
+      "destination": "/journal.html"
+    },
+    {
+      "source": "/student/journal/:path*",
+      "destination": "/journal.html"
     }
   ]
 }

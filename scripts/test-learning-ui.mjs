@@ -10,7 +10,7 @@ import { zoneLabels, summarizePlan } from '../api/_learning.js';
 const ids = ['10000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000002'];
 const students = [{ id: ids[0], display_name: 'Estudiante Uno', active: true }, { id: ids[1], display_name: 'Estudiante Dos', active: true }];
 const titles = ['Domina el teclado', 'Una historia, otra perspectiva', 'Activa tu energía', 'Make yourself heard', 'Tu voz por escrito', 'Explora lo que te rodea', 'Encuentra la solución', 'Un reto más'];
-const assignments = students.flatMap(s => Object.keys(zoneLabels).map((zone, i) => ({ student_id: s.id, zone, enabled: true, title: titles[i], instructions: '1. Lee las instrucciones.\n2. Completa la actividad.\n3. Revisa tu trabajo.', description: 'Trabaja a tu ritmo y consulta tus dudas.', platform: '', url: zone === 'reading' ? 'https://example.org/activity' : '', completion_method: zone === 'exercise' ? 'checkbox' : zone === 'typing' ? 'timed' : 'student', target_minutes: zone === 'typing' ? 1 : null, assignment_date: '2026-09-28' })));
+const assignments = students.flatMap(s => Object.keys(zoneLabels).map((zone, i) => ({ student_id: s.id, zone, enabled: true, title: titles[i] ?? 'Mi Diario', instructions: '1. Lee las instrucciones.\n2. Completa la actividad.\n3. Revisa tu trabajo.', description: 'Trabaja a tu ritmo y consulta tus dudas.', platform: '', url: zone === 'reading' ? 'https://example.org/activity' : '', completion_method: zone === 'exercise' ? 'checkbox' : zone === 'typing' ? 'timed' : 'student', target_minutes: zone === 'typing' ? 1 : null, assignment_date: '2026-09-28' })));
 const data = { students, assignments, plans: ids.map(student_id => ({ student_id, daily_goal: 6, published: true })), progress: [], date: '2026-09-28' };
 let failNext = false;
 function studentData() {
@@ -60,7 +60,7 @@ try {
   const page = await browser.newPage({ viewport: { width: 1280, height: 1000 } });
   const errors = []; page.on('pageerror', e => errors.push(e.message));
   await page.goto(`${origin}/zones`);
-  await expect(page.locator('.zone-card')).toHaveCount(8);
+  await expect(page.locator('.zone-card')).toHaveCount(9);
   await expect(page.getByText('Mi meta de hoy: 0 de 6 zonas')).toBeVisible();
   await expect.poll(() => page.locator('.story-art').evaluate(img => img.complete && img.naturalWidth > 0)).toBe(true);
   for (const width of [1024, 800, 390]) {
@@ -89,12 +89,12 @@ try {
   assignments.find(a => a.student_id === ids[0] && a.zone === 'reading').enabled = false;
   await page.reload(); await expect(page.getByRole('heading', { name: 'Zona no disponible' })).toBeVisible();
   await expect(page.getByRole('link', { name: /Abrir actividad/ })).toHaveCount(0);
-  await page.goto(`${origin}/zones`); await expect(page.locator('.zone-card')).toHaveCount(7);
+  await page.goto(`${origin}/zones`); await expect(page.locator('.zone-card')).toHaveCount(8);
   await page.setViewportSize({ width: 390, height: 844 });
   await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.setViewportSize({ width: 1280, height: 1000 });
   await page.goto(`${origin}/teacher/zones`);
-  await expect(page.getByRole('switch')).toHaveCount(16);
+  await expect(page.getByRole('switch')).toHaveCount(18);
   const toggle = page.getByRole('switch', { name: 'Reading: Estudiante Uno', exact: true });
   await toggle.click(); await expect(toggle).toHaveAttribute('aria-checked', 'true');
   failNext = true; await toggle.click(); await expect(page.locator('.staff-feedback')).toContainText('No se pudo guardar');
@@ -113,8 +113,8 @@ try {
   await page.locator('th:has-text("Reading")').getByRole('button', { name: 'Deshabilitar para activos', exact: true }).click();
   await expect(toggle).toHaveAttribute('aria-checked', 'false');
   await toggle.click(); await expect(toggle).toHaveAttribute('aria-checked', 'true');
-  await page.locator('#student-search').fill('Uno'); await expect(page.getByRole('switch')).toHaveCount(8);
-  await page.locator('#student-search').fill(''); await expect(page.getByRole('switch')).toHaveCount(16);
+  await page.locator('#student-search').fill('Uno'); await expect(page.getByRole('switch')).toHaveCount(9);
+  await page.locator('#student-search').fill(''); await expect(page.getByRole('switch')).toHaveCount(18);
   await expect(page.locator('.zone-matrix thead th').first()).toHaveCSS('position', 'sticky');
   await expect(page.locator('.zone-matrix tbody th').first()).toHaveCSS('position', 'sticky');
   await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
