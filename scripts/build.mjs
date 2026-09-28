@@ -43,3 +43,4 @@ await writeFile(
 await cp('public/styles.css', 'dist/assets/styles.css');
 
 await cp('public/learning.css', 'dist/assets/learning.css');
+await cp('public/art', 'dist/art', { recursive: true });
