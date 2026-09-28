@@ -4,17 +4,26 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Entrar - Zonas Escolares</title>
-    <link rel="stylesheet" href="/assets/styles.css" />
+    <meta name="theme-color" content="#182231" />
+    <link rel="stylesheet" href="/auth/login.css" />
   </head>
   <body>
     <main class="auth-shell" aria-labelledby="login-title">
+      <section class="intro-panel" aria-label="Bienvenida">
+        <p class="edition">TU DÍA. TUS ZONAS.</p>
+        <p class="intro-title">Un nuevo día.<br /><span>Tu próxima<br />historia.</span></p>
+        <p class="intro-copy">Explora tus actividades, elige por dónde empezar y avanza a tu ritmo.</p>
+        <div class="panel-strip" aria-hidden="true"><span>EXPLORA ↗</span><span>ELIGE ✦</span><span>AVANZA →</span></div>
+        <p class="intro-footer">CADA DÍA, UN CAPÍTULO MÁS.</p>
+      </section>
       <section class="auth-card">
-        <p class="hero__label">🔐 Entrada segura</p>
+        <p class="hero__label">TU HISTORIA EMPIEZA AQUÍ</p>
         <h1 id="login-title">Zonas Escolares</h1>
         <p class="auth-card__text">
-          Estudiantes: usa tu cuenta de Google aprobada por tu maestra o maestro para ver tus zonas.
+          Entra con la cuenta de Google que tu escuela autorizó para ti.
         </p>
         <button class="google-button" type="button" data-auth-provider="google">Continuar con Google</button>
+        <p class="account-help">Si tienes varias cuentas, elige la de tu escuela. Si no puedes entrar, consulta con tu maestro.</p>
         <p class="auth-card__note">Solo pedimos tu identidad básica de Google. No usamos permisos de Google Classroom.</p>
         <p class="auth-card__status" data-auth-message role="status" aria-live="polite"></p>
       </section>
