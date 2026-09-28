@@ -1,0 +1,40 @@
+.journal-shell { max-width: 1050px; }
+.journal-shell [hidden] { display: none !important; }
+.journal-header { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; border-bottom: 3px solid var(--ink); padding-bottom: 18px; margin-bottom: 24px; }
+.journal-header h1 { margin: 0 auto 0 0; font-size: 34px; }
+.journal-header a, .journal-button { display: inline-flex; align-items: center; justify-content: center; min-height: 48px; padding: 10px 16px; border: 2px solid var(--ink); background: white; color: var(--ink); font-weight: 800; text-decoration: none; }
+.journal-intro { padding: 30px; background: #ded4f3; border: 3px solid var(--ink); box-shadow: 5px 5px var(--ink); margin-bottom: 24px; }
+.journal-intro h2 { font-size: 32px; line-height: 1.2; }
+.journal-privacy { background: #fffdf6; padding: 20px; border-left: 4px solid #7a619d; font-size: 15px; }
+.theme-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; margin: 24px 0; }
+.theme-card { display: flex; align-items: center; gap: 20px; padding: 24px; border: 2px solid var(--ink); box-shadow: 4px 4px var(--ink); text-decoration: none; color: var(--ink); background: #d5e7ff; min-height: 120px; font-size: 22px; font-weight: 850; }
+.theme-card span { font-size: 40px; }
+.theme-feelings { background: #ded4f3; } .theme-story { background: #f6c68c; } .theme-thoughts { background: #a8d7c3; } .theme-good { background: #e9d982; }
+.journal-paper { background: #fffdf8; padding: 30px; border: 2px solid var(--ink); border-radius: 8px; }
+.journal-paper label { display: block; font-weight: 700; margin: 22px 0; }
+.journal-paper textarea, .journal-paper input[type="text"], .journal-paper select { display: block; width: 100%; font: 18px/1.7 system-ui, sans-serif; padding: 12px; border: 1px solid #738195; border-radius: 4px; color: var(--ink); background: white; margin-top: 8px; }
+.journal-paper textarea { min-height: 110px; resize: vertical; }
+.emotion-grid { display: flex; flex-wrap: wrap; gap: 10px; }
+.emotion-grid label { margin: 0; font-size: 15px; padding: 10px; border: 1px solid #738195; border-radius: 8px; background: white; min-height: 48px; cursor: pointer; }
+.emotion-grid label:has(:checked) { background: #d9f269; border-color: var(--ink); }
+.emotion-grid input { width: 20px; height: 20px; vertical-align: middle; }
+.journal-paper fieldset { border: 0; margin: 0; padding: 0; }
+.journal-paper legend { font-size: 22px; font-weight: 850; margin-bottom: 14px; }
+.journal-actions { display: flex; flex-wrap: wrap; gap: 12px; margin: 24px 0; }
+.journal-shell button.primary { background: var(--accent); }
+.journal-save { position: sticky; top: 0; z-index: 3; background: #fffdf8; border-bottom: 2px solid #738195; padding: 12px; min-height: 48px; font-weight: 700; }
+.journal-reading { white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.8; }
+.journal-entry-card { background: #fffdf8; padding: 20px; border: 2px solid var(--ink); margin: 18px 0; }
+.journal-entry-card h3 { margin: 8px 0; }
+.journal-entry-card p { overflow-wrap: anywhere; }
+.journal-filters { display: flex; flex-wrap: wrap; gap: 12px; margin: 20px 0; }
+.journal-filters label { display: flex; flex-direction: column; flex: 1 1 170px; }
+.journal-filters input, .journal-filters select { min-height: 48px; width: 100%; padding: 10px; font: inherit; }
+.journal-calendar { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 5px; margin: 20px 0; }
+.journal-calendar button { padding: 6px; min-width: 0; }
+.journal-calendar .has-entries { background: #d9f269; }
+.journal-calendar span { text-align: center; padding: 10px 0; }
+.journal-timer { background: #e9edf4; padding: 18px; margin: 20px 0; }
+.journal-error { color: #8a260d; }
+.zone-mi_diario { --zone-color: #ded4f3; }
+@media (max-width: 650px) { .theme-grid { grid-template-columns: 1fr; } .journal-paper, .journal-intro { padding: 20px; } .journal-header h1 { width: 100%; } .journal-filters { gap: 10px; } }

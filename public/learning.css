@@ -47,6 +47,7 @@ progress::-webkit-progress-value { background: #769c1c; }
 .zone-naturales { --zone-color: #a8d7c3; }
 .zone-matematica { --zone-color: #e9d982; }
 .zone-ixl_extra_practice { --zone-color: #b6c9db; }
+.zone-mi_diario { --zone-color: #ded4f3; }
 .card-top { display: flex; align-items: center; gap: 16px; min-height: 76px; }
 .chapter { font-weight: 900; font-size: 13px; }
 .zone-symbol { font: 900 42px/1.2 system-ui; flex-shrink: 0; }

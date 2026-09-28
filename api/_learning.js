@@ -3,7 +3,7 @@ import { createSupabaseClient, getRequestUrl } from './teacher/_shared.js';
 export const zoneLabels = {
   typing: 'Typing', reading: 'Reading', exercise: 'Exercise', english: 'English',
   lengua_espanola: 'Lengua Española', naturales: 'Naturales', matematica: 'Matemática',
-  ixl_extra_practice: 'IXL Extra Practice',
+  ixl_extra_practice: 'IXL Extra Practice', mi_diario: 'Mi Diario',
 };
 export const completionLabels = {
   timed: 'Actividad con tiempo', student: 'El estudiante marca completado',
@@ -14,7 +14,7 @@ export function sendJson(response, status, body) {
   response.writeHead(status, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
   response.end(JSON.stringify(body));
 }
-export async function readJson(request) {
+export async function readJson(request, maxBytes = 65536) {
   const origin = request.headers.origin;
   if (origin && origin !== getRequestUrl(request).origin) throw new Error('Origen no permitido.');
   if (!String(request.headers['content-type']).startsWith('application/json')) throw new Error('Se requiere JSON.');
@@ -23,7 +23,7 @@ export async function readJson(request) {
   let size = 0;
   for await (const chunk of request) {
     size += Buffer.byteLength(chunk);
-    if (size > 65536) throw new Error('La solicitud es demasiado grande.');
+    if (size > maxBytes) throw new Error('La solicitud es demasiado grande.');
     chunks.push(Buffer.from(chunk));
   }
   return JSON.parse(Buffer.concat(chunks).toString('utf8'));

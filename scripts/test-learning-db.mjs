@@ -23,7 +23,7 @@ try {
     grant usage on schema auth, public to authenticated, anon; grant execute on function auth.uid() to authenticated, anon;`);
   const files = (await readdir('supabase/migrations')).sort();
   const migration = files.find(f => f.endsWith('_teen_learning_plans.sql'));
-  for (const file of files.filter(f => f !== migration)) await sql(await readFile(`supabase/migrations/${file}`, 'utf8'));
+  for (const file of files.filter(f => f < migration)) await sql(await readFile(`supabase/migrations/${file}`, 'utf8'));
   await sql(`insert into auth.users(id,email) values ('${u1}','one@test.local'),('${u2}','two@test.local'),('${teacher}','teacher@test.local'),('${admin}','admin@test.local');
     update public.profiles set active=true, role='student';
     update public.profiles set role='teacher' where id='${teacher}'; update public.profiles set role='admin' where id='${admin}';
@@ -36,6 +36,7 @@ try {
     assert.equal((await one('select count(*)::int n from public.learning_zones')).n, 8);
     assert.equal((await one('select count(*)::int n from public.learning_assignments where enabled')).n, 0);
   });
+  for (const file of files.filter(f => f > migration)) await sql(await readFile(`supabase/migrations/${file}`, 'utf8'));
   await asUser(teacher);
   const task = { title: 'Práctica', instructions: '1. Lee\n2. Explica', description: '', platform: '', url: '', completion_method: 'student', target_minutes: null, assignment_date: '2026-09-28' };
   const set = (id, zone, extra = {}) => manage({ action: 'assignment', student_ids: [id], zone, enabled: true, assignment: { ...task, ...extra } });
@@ -105,6 +106,67 @@ try {
   });
   await asUser(admin);
   await check('admin can manage plans', async () => { await manage({ action:'goal', student_ids:[s1], goal:2 }); });
+  const eid = '30000000-0000-0000-0000-000000000001';
+  const request1 = '40000000-0000-0000-0000-000000000001';
+  const request2 = '40000000-0000-0000-0000-000000000002';
+  const journal = { id: eid, theme: 'goal', title: 'Mi plan', responses: { '0': 'Texto personal\nOtra línea' }, emotions: ['Triste', 'Tranquilo/a'], other_emotion: '', subject: '', free_writing: '', status: 'draft' };
+  const saveJournal = async (e, revision, request) => (await db.query('select (public.save_journal_entry($1::jsonb,$2,$3::uuid)).*', [JSON.stringify(e), revision, request])).rows[0];
+  await check('journal defaults disabled and has 30-minute suggestion', async () => {
+    const a = await one(`select * from public.learning_assignments where student_id='${s1}' and zone='mi_diario'`);
+    assert.equal(a.enabled, false); assert.equal(a.target_minutes, 30); assert.equal(a.completion_method, 'student');
+    assert.equal((await one('select count(*)::int n from public.learning_zones')).n, 9);
+  });
+  await asUser(u1);
+  await check('disabled journal rejects direct writes', async () => { await assert.rejects(saveJournal(journal, 0, request1)); });
+  await asUser(admin); await manage({ action:'toggle', student_ids:[s1,s2], zone:'mi_diario', enabled:true, confirmed:true });
+  await asUser(u1);
+  await check('owned draft persists and repeated saves are idempotent', async () => {
+    const first = await saveJournal(journal, 0, request1); assert.equal(first.revision, 1);
+    const retry = await saveJournal(journal, 0, request1); assert.equal(retry.revision, 1);
+    await sql('reset role;'); await asUser(u1);
+    assert.equal((await one(`select responses->>'0' as body from public.journal_entries where id='${eid}'`)).body, journal.responses['0']);
+    assert.equal((await one('select count(*)::int n from public.journal_entries')).n, 1);
+  });
+  await check('concurrent stale revisions cannot overwrite writing', async () => {
+    await saveJournal({ ...journal, title:'Actualizado' }, 1, request2);
+    await assert.rejects(saveJournal({ ...journal, title:'Viejo' }, 1, '40000000-0000-0000-0000-000000000003'));
+    assert.equal((await one('select title from public.journal_entries')).title, 'Actualizado');
+  });
+  await asUser(u2);
+  await check('other student cannot read or overwrite journal by ID', async () => {
+    assert.equal((await one('select count(*)::int n from public.journal_entries')).n, 0);
+    await assert.rejects(saveJournal(journal, 2, request1));
+    await assert.rejects(sql(`update public.journal_entries set student_id='${s2}' where id='${eid}'`));
+  });
+  await asUser(teacher);
+  await check('ordinary teacher has no access to text or emotions', async () => {
+    assert.equal((await one('select count(*)::int n from public.journal_entries')).n, 0);
+    await assert.rejects(saveJournal(journal, 2, request1));
+    await assert.rejects(sql('select * from public.journal_staff_requests'));
+  });
+  await asUser(admin);
+  await check('general administrator role cannot read private journal either', async () => { assert.equal((await one('select count(*)::int n from public.journal_entries')).n, 0); });
+  await asUser(u1);
+  await check('finished original is immutable and blank prompts are allowed', async () => {
+    await saveJournal({ ...journal, status:'finished', responses:{} }, 2, '40000000-0000-0000-0000-000000000004');
+    await assert.rejects(saveJournal(journal, 3, '40000000-0000-0000-0000-000000000005'));
+    assert.equal((await one('select status from public.journal_entries')).status, 'finished');
+  });
+  await check('multiple entries per date and separate communication storage', async () => {
+    await saveJournal({ ...journal, id:'30000000-0000-0000-0000-000000000002' }, 0, request2);
+    assert.equal((await one("select count(*)::int n from public.journal_entries where entry_date=(now() at time zone 'America/Santo_Domingo')::date")).n, 2);
+    await assert.rejects(sql("insert into public.journal_staff_requests(student_id,recipient_profile_id,kind) values('" + s1 + "','" + teacher + "','talk')"));
+  });
+  await check('optional journal timer and early student completion use no content evaluation', async () => {
+    await action('mi_diario','start'); await action('mi_diario','pause'); await action('mi_diario','finish');
+    assert.equal((await one("select status from public.learning_progress where zone='mi_diario'")).status, 'finished');
+  });
+  await asUser(admin);
+  await manage({ action:'toggle', student_ids:[s1], zone:'mi_diario', enabled:false });
+  await asUser(u1);
+  await check('disabling journal hides existing entries without deleting them', async () => { assert.equal((await one('select count(*)::int n from public.journal_entries')).n, 0); });
+  await sql('reset role;');
+  assert.equal((await one('select count(*)::int n from public.journal_entries')).n, 2);
   await sql(`reset role; update public.profiles set active=false where id='${teacher}';`); await asUser(teacher);
   await check('inactive staff denied', async () => { await assert.rejects(manage({ action:'goal',student_ids:[s1],goal:1 })); });
   await sql('reset role; set role anon;');
