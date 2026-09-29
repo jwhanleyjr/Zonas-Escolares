@@ -19,5 +19,5 @@ test('staff roster queries never request private journal tables', async () => {
   const tables = [];
   const fake = { from(table) { tables.push(table); const q = { select(){return q;}, order(){return q;}, eq(){return q;}, async range(){return {data:[],error:null};} }; return q; } };
   await loadRoster(fake);
-  assert.deepEqual(tables.sort(), ['learning_assignments','learning_plans','learning_progress','students']);
+  assert.deepEqual(tables.sort(), ['learning_assignments','learning_plans','learning_progress','learning_reviews','students']);
 });

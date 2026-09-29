@@ -11,12 +11,12 @@ const ids = ['10000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-00
 const students = [{ id: ids[0], display_name: 'Estudiante Uno', active: true }, { id: ids[1], display_name: 'Estudiante Dos', active: true }];
 const titles = ['Domina el teclado', 'Una historia, otra perspectiva', 'Activa tu energía', 'Make yourself heard', 'Tu voz por escrito', 'Explora lo que te rodea', 'Encuentra la solución', 'Un reto más'];
 const assignments = students.flatMap(s => Object.keys(zoneLabels).map((zone, i) => ({ student_id: s.id, zone, enabled: true, title: titles[i] ?? 'Mi Diario', instructions: '1. Lee las instrucciones.\n2. Completa la actividad.\n3. Revisa tu trabajo.', description: 'Trabaja a tu ritmo y consulta tus dudas.', platform: '', url: zone === 'reading' ? 'https://example.org/activity' : '', completion_method: zone === 'exercise' ? 'checkbox' : zone === 'typing' ? 'timed' : 'student', target_minutes: zone === 'typing' ? 1 : null, assignment_date: '2026-09-28' })));
-const data = { students, assignments, plans: ids.map(student_id => ({ student_id, daily_goal: 6, published: true })), progress: [], date: '2026-09-28' };
+const data = { students, assignments, plans: ids.map(student_id => ({ student_id, daily_goal: 6, published: true })), progress: [], reviews: [], date: '2026-09-28' };
 let failNext = false;
 function studentData() {
   const own = assignments.filter(a => a.student_id === ids[0] && a.enabled);
   const progress = data.progress.filter(p => p.student_id === ids[0]);
-  return { student: students[0], assignments: own, progress, plan: data.plans[0], summary: summarizePlan(own, progress, data.plans[0].daily_goal), date: data.date };
+  return { student: students[0], assignments: own, progress, reviews: data.reviews.filter(r => r.student_id === ids[0]).slice().reverse(), plan: data.plans[0], summary: summarizePlan(own, progress, data.plans[0].daily_goal), date: data.date };
 }
 const server = createServer(async (req, res) => {
   try {
@@ -27,10 +27,15 @@ const server = createServer(async (req, res) => {
       const body = chunks.length ? JSON.parse(Buffer.concat(chunks)) : {};
       if (req.method === 'POST' && failNext) { failNext = false; return json({ error: 'No se pudo guardar. Intenta otra vez.' }, 503); }
       if (url.pathname === '/api/student-learning') {
-        if (req.method === 'POST') data.progress.push({ student_id: ids[0], zone: body.zone, status: 'finished', recorded_seconds: 0, teacher_confirmed: false, active_started_at: null });
+        if (req.method === 'POST' && body.action === 'submit_review') { data.reviews.push({id: String(data.reviews.length+1), student_id: ids[0], zone:body.zone, work_date:data.date, status:'pending', submitted_at:new Date().toISOString(), feedback:'', assignment:{...assignments.find(a => a.student_id===ids[0] && a.zone===body.zone)}}); }
+        else if (req.method === 'POST') data.progress.push({ student_id: ids[0], zone: body.zone, status: 'finished', recorded_seconds: 0, teacher_confirmed: false, active_started_at: null });
         return json(studentData());
       }
       if (url.pathname === '/api/student-messages') return json({ messages: [] });
+      if (req.method === 'POST' && body.action === 'review') {
+        const r = data.reviews.find(r => r.id === body.review_id); r.status=body.decision; r.feedback=body.feedback;
+        if (body.decision === 'approved') data.progress.push({student_id:r.student_id,zone:r.zone,status:'finished',teacher_confirmed:true,recorded_seconds:0,active_started_at:null});
+      }
       if (req.method === 'POST') {
         for (const id of body.student_ids) {
           const a = assignments.find(a => a.student_id === id && a.zone === body.zone);
@@ -39,7 +44,7 @@ const server = createServer(async (req, res) => {
           if (body.action === 'goal') data.plans.find(p => p.student_id === id).daily_goal = body.goal;
         }
       }
-      return json(data);
+      return json({...data, reviews:data.reviews.filter(r => r.status==='pending')});
     }
     if (url.pathname.startsWith('/teacher')) {
       res.writeHead(200, { 'content-type': 'text/html' });
@@ -128,6 +133,36 @@ try {
   await page.locator(`[data-goal="${ids[0]}"] button`).click();
   await expect(page.locator('.staff-feedback')).toContainText('Cambios guardados');
   await page.screenshot({ path: resolve(artifacts, 'staff-daily-goals.png'), fullPage: true });
+  assignments.find(a => a.student_id===ids[0] && a.zone==='english').completion_method='external';
+  await page.goto(`${origin}/student/zones/english`);
+  failNext=true;
+  await page.getByRole('button',{name:'Ya terminé · Solicitar revisión'}).click();
+  await expect(page.locator('.save-status')).toContainText('No se pudo guardar');
+  await page.getByRole('button',{name:'Ya terminé · Solicitar revisión'}).click();
+  await expect(page.getByText('Pendiente de revisión.',{exact:false}).last()).toBeVisible();
+  await page.goto(`${origin}/zones`);
+  await expect(page.getByText('1 pendientes de revisión')).toBeVisible();
+  await expect(page.getByText('Mi meta de hoy: 1 de 5 zonas')).toBeVisible();
+  await page.goto(`${origin}/teacher/progress`);
+  await page.locator('[data-review] textarea').fill('Revisa el ejercicio 2.');
+  failNext=true;
+  await page.getByRole('button',{name:'Necesita cambios',exact:true}).click();
+  await expect(page.locator('[data-review] textarea')).toHaveValue('Revisa el ejercicio 2.');
+  await page.getByRole('button',{name:'Necesita cambios',exact:true}).click();
+  await expect(page.getByText('No hay solicitudes pendientes.')).toBeVisible();
+  await page.goto(`${origin}/student/zones/english`);
+  await expect(page.getByText('Necesita cambios: Revisa el ejercicio 2.')).toBeVisible();
+  await page.getByRole('button',{name:'Volver a solicitar revisión'}).click();
+  await page.goto(`${origin}/teacher/progress`);
+  await page.setViewportSize({width:800,height:1100});
+  await page.screenshot({path:resolve(artifacts,'review-queue.png'),fullPage:true});
+  page.once('dialog', dialog => dialog.accept());
+  await page.getByRole('button',{name:'Confirmar completada',exact:true}).click();
+  await expect(page.getByText('No hay solicitudes pendientes.')).toBeVisible();
+  await page.goto(`${origin}/student/zones/english`);
+  await expect(page.getByText('Terminada por hoy')).toBeVisible();
+  await page.goto(`${origin}/zones`);
+  await expect(page.getByText('Mi meta de hoy: 2 de 5 zonas')).toBeVisible();
   if (errors.length) throw new Error(errors.join('\n'));
   console.log('Browser checks passed: desktop/tablet/mobile layout, availability, direct disabled URL, exercise, external links, matrix save/error/bulk/search, assignment retry, goals.');
 } finally {

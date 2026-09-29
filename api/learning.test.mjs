@@ -30,3 +30,12 @@ test('bulk changes require confirmation; staff profiles must be active', () => {
 test('mutation requests reject cross-origin JSON', async () => {
   await assert.rejects(readJson({ headers: { origin: 'https://evil.test', host: 'school.test', 'content-type': 'application/json' }, body: {} }));
 });
+
+test('review decisions require valid identity, decision, and correction feedback', () => {
+  const body={action:'review',student_ids:['10000000-0000-0000-0000-000000000001'],review_id:'30000000-0000-0000-0000-000000000001',decision:'approved',feedback:''};
+  assert.equal(validateChange(body).decision,'approved');
+  assert.throws(() => validateChange({...body,decision:'changes'}));
+  assert.throws(() => validateChange({...body,review_id:'bad'}));
+  assert.throws(() => validateChange({...body,decision:'finished'}));
+  assert.equal(validateChange({...body,decision:'changes',feedback:'Revisa el paso 2.'}).decision,'changes');
+});
