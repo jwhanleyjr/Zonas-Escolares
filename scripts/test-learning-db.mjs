@@ -80,6 +80,58 @@ try {
   await check('student cannot forge teacher or external completion', async () => {
     await assert.rejects(action('english','finish')); await assert.rejects(action('naturales','finish'));
   });
+  const submit = zone => db.query('select public.request_learning_review($1)', [zone]);
+  const review = (id, decision, feedback='') => db.query('select public.review_learning_submission($1,$2,$3)', [id,decision,feedback]);
+  await check('review requests are idempotent, own-only, and do not complete a zone', async () => {
+    await submit('english'); await submit('english');
+    assert.equal((await one("select count(*)::int n from public.learning_reviews")).n,1);
+    assert.equal((await one("select count(*)::int n from public.learning_progress where zone='english' and teacher_confirmed")).n,0);
+    await assert.rejects(submit('exercise')); await assert.rejects(submit('lengua_espanola'));
+    await assert.rejects(sql("update public.learning_reviews set status='approved'"));
+  });
+  const firstReview = (await one('select id from public.learning_reviews')).id;
+  await asUser(u2);
+  await check('students cannot see or decide another student request', async () => {
+    assert.equal((await one('select count(*)::int n from public.learning_reviews')).n,0);
+    await assert.rejects(review(firstReview,'approved'));
+  });
+  await asUser(teacher);
+  await check('teacher returns work with required feedback', async () => {
+    await assert.rejects(review(firstReview,'changes'));
+    await review(firstReview,'changes','Revisa el segundo ejercicio.');
+    await assert.rejects(review(firstReview,'approved'));
+  });
+  await asUser(u1);
+  await check('student sees feedback and can resubmit', async () => {
+    assert.equal((await one('select feedback from public.learning_reviews')).feedback,'Revisa el segundo ejercicio.');
+    await submit('english');
+    assert.equal((await one("select count(*)::int n from public.learning_reviews where status='pending'")).n,1);
+  });
+  const secondReview=(await one("select id from public.learning_reviews where status='pending'")).id;
+  await asUser(admin);
+  await check('administrator approves and counts work only once', async () => {
+    await review(secondReview,'approved');
+    assert.equal((await one("select teacher_confirmed from public.learning_progress where zone='english'")).teacher_confirmed,true);
+    await assert.rejects(review(secondReview,'approved'));
+  });
+  await asUser(u1); await submit('naturales');
+  const externalReview=(await one("select id from public.learning_reviews where status='pending'")).id;
+  await asUser(teacher);
+  await check('changed assignment cannot be silently approved', async () => {
+    await set(s1,'naturales',{completion_method:'external', title:'Actividad nueva'});
+    await assert.rejects(review(externalReview,'approved'));
+    await review(externalReview,'changes','Abre la actividad nueva.');
+  });
+  await asUser(u1); await submit('naturales');
+  const historicalReview=(await one("select id from public.learning_reviews where status='pending'")).id;
+  await sql("reset role; update public.learning_reviews set work_date=(now() at time zone 'America/Santo_Domingo')::date-1 where id='"+historicalReview+"';");
+  await asUser(teacher);
+  await check('late approval counts on original day, not today', async () => {
+    await review(historicalReview,'approved');
+    assert.equal((await one("select count(*)::int n from public.learning_progress where zone='naturales' and teacher_confirmed and work_date=(now() at time zone 'America/Santo_Domingo')::date-1")).n,1);
+    assert.equal((await one("select count(*)::int n from public.learning_progress where zone='naturales' and teacher_confirmed and work_date=(now() at time zone 'America/Santo_Domingo')::date")).n,0);
+  });
+  await asUser(u1);
   await check('timer switching saves and pauses; early finish rejected', async () => {
     await action('typing','start'); await assert.rejects(action('typing','finish'));
     await sql(`reset role; update public.learning_progress set active_started_at=now()-interval '70 seconds' where student_id='${s1}' and zone='typing';`);
@@ -168,8 +220,8 @@ try {
   await sql('reset role;');
   assert.equal((await one('select count(*)::int n from public.journal_entries')).n, 2);
   await sql(`reset role; update public.profiles set active=false where id='${teacher}';`); await asUser(teacher);
-  await check('inactive staff denied', async () => { await assert.rejects(manage({ action:'goal',student_ids:[s1],goal:1 })); });
+  await check('inactive staff denied', async () => { await assert.rejects(manage({ action:'goal',student_ids:[s1],goal:1 })); await assert.rejects(review(firstReview,'approved'));  });
   await sql('reset role; set role anon;');
-  await check('anonymous access denied', async () => { await assert.rejects(sql('select * from public.learning_assignments')); await assert.rejects(action('reading','finish')); });
+  await check('anonymous access denied', async () => { await assert.rejects(sql('select * from public.learning_assignments')); await assert.rejects(action('reading','finish')); await assert.rejects(submit('english')); await assert.rejects(review(firstReview,'approved')); });
   console.log(`${count} database checks passed in isolated PostgreSQL (PGlite). No remote database changed.`);
 } finally { await db.close(); }
