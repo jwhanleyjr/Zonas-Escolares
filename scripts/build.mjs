@@ -46,3 +46,6 @@ await cp('public/learning.css', 'dist/assets/learning.css');
 await cp('public/art', 'dist/art', { recursive: true });
 await cp('public/journal.html', 'dist/journal.html');
 await cp('public/journal.css', 'dist/assets/journal.css');
+
+await cp('public/pe.html', 'dist/pe.html');
+await cp('public/pe.css', 'dist/assets/pe.css');

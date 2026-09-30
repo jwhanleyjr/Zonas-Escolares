@@ -1,6 +1,7 @@
 // Browser interaction tests with synthetic students and an isolated API fixture.
 // Database authorization and mutations are exercised separately by test:db.
-import { chromium, expect } from '@playwright/test';
+import { chromium, expect as baseExpect } from '@playwright/test';
+const expect = baseExpect.configure({ timeout: 30000 });
 import { createServer } from 'node:http';
 import { readFile, mkdir } from 'node:fs/promises';
 import { resolve, extname } from 'node:path';
@@ -144,6 +145,15 @@ try {
   await expect(page.getByText('1 pendientes de revisión')).toBeVisible();
   await expect(page.getByText('Mi meta de hoy: 1 de 5 zonas')).toBeVisible();
   await page.goto(`${origin}/teacher/progress`);
+  await page.locator('#progress-student').selectOption(ids[0]);
+  await expect(page.locator('.student-progress-panel')).toContainText('1 pendientes de revisión');
+  await page.locator('#progress-zone-filter').selectOption('review');
+  await expect(page.locator('.student-zone-item')).toHaveCount(1);
+  await expect(page.locator('.student-zone-item')).toContainText('English');
+  await page.screenshot({path:resolve(artifacts,'individual-progress.png'),fullPage:true});
+  await page.locator('#progress-student').selectOption(ids[1]);
+  await expect(page.locator('[data-review]')).toHaveCount(0);
+  await page.locator('#progress-student').selectOption(ids[0]);
   await page.locator('[data-review] textarea').fill('Revisa el ejercicio 2.');
   failNext=true;
   await page.getByRole('button',{name:'Necesita cambios',exact:true}).click();
