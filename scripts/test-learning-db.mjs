@@ -223,5 +223,50 @@ try {
   await check('inactive staff denied', async () => { await assert.rejects(manage({ action:'goal',student_ids:[s1],goal:1 })); await assert.rejects(review(firstReview,'approved'));  });
   await sql('reset role; set role anon;');
   await check('anonymous access denied', async () => { await assert.rejects(sql('select * from public.learning_assignments')); await assert.rejects(action('reading','finish')); await assert.rejects(submit('english')); await assert.rejects(review(firstReview,'approved')); });
+  const token = 'a'.repeat(64), nextToken = 'b'.repeat(64);
+  const pe = (key, ids = [], date = null) => db.query('select public.pe_checklist($1,$2::uuid[],$3::date) result', [key, ids, date]);
+  const link = (action, key = null) => db.query('select public.manage_pe_link($1,$2) result', [action,key]);
+  await asUser(admin);
+  await set(s1,'exercise',{ completion_method:'teacher' });
+  await set(s2,'exercise',{ completion_method:'timed',target_minutes:5 });
+  await link('replace',token);
+  await check('PE links require active staff management and protect private tables', async () => {
+    await asUser(u1); await assert.rejects(link('replace',nextToken));
+    await sql('reset role; set role anon;'); await assert.rejects(link('status'));
+    await assert.rejects(sql('select * from learning_private.pe_links'));
+    await assert.rejects(sql('select * from learning_private.pe_attendance'));
+    await assert.rejects(pe('x')); await assert.rejects(pe(nextToken));
+  });
+  let peDate;
+  await check('PE capability shows only minimal active enabled non-timed Exercise roster', async () => {
+    const result=(await pe(token)).rows[0].result; peDate=result.date;
+    assert.equal(result.students.length,1); assert.equal(result.students[0].id,s1);
+    assert.deepEqual(Object.keys(result.students[0]).sort(),['confirmed','id','name']);
+    assert.equal(result.students[0].confirmed,false);
+  });
+  await check('PE confirmation is date checked and rejects inaccessible students atomically', async () => {
+    await assert.rejects(pe(token,[s1],'2000-01-01'));
+    await assert.rejects(pe(token,[s1,s2],peDate));
+    assert.equal((await pe(token)).rows[0].result.students[0].confirmed,false);
+  });
+  await check('PE confirmation completes Exercise without adding time and resolves its review', async () => {
+    await asUser(u1); await submit('exercise');
+    await sql('reset role; set role anon;');
+    await pe(token,[s1],peDate); await pe(token,[s1,s1],peDate);
+    assert.equal((await pe(token)).rows[0].result.students[0].confirmed,true);
+    await sql('reset role;');
+    assert.equal((await one('select count(*)::int n from learning_private.pe_attendance')).n,1);
+    const progress=await one(`select * from public.learning_progress where student_id='${s1}' and zone='exercise' and work_date=public.current_school_date()`);
+    assert.equal(progress.status,'finished'); assert.equal(progress.teacher_confirmed,true); assert.equal(progress.recorded_seconds,0);
+    assert.equal((await one(`select count(*)::int n from public.learning_reviews where student_id='${s1}' and zone='exercise' and status='pending'`)).n,0);
+  });
+  await check('PE rotation and revocation invalidate old links but preserve confirmations', async () => {
+    await asUser(admin); await link('replace',nextToken);
+    await sql('reset role; set role anon;'); await assert.rejects(pe(token));
+    assert.equal((await pe(nextToken)).rows[0].result.students[0].confirmed,true);
+    await asUser(admin); const status=(await link('status')).rows[0].result;
+    assert.equal(status.confirmations.length,1); assert.equal(status.active,true);
+    await link('disable'); await sql('reset role; set role anon;'); await assert.rejects(pe(nextToken));
+  });
   console.log(`${count} database checks passed in isolated PostgreSQL (PGlite). No remote database changed.`);
 } finally { await db.close(); }
