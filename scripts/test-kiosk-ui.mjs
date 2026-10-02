@@ -32,6 +32,14 @@ try{
   await mkdir('test-results',{recursive:true});await page.screenshot({path:'test-results/kiosk-tv.png',fullPage:true});
   if(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth))throw Error('TV horizontal overflow');
   if(await page.evaluate(()=>document.documentElement.scrollHeight>innerHeight))throw Error('TV page needs vertical scrolling');
+  for(const viewport of [{width:1920,height:720},{width:1366,height:768},{width:1280,height:720},{width:960,height:540}]){
+    await page.setViewportSize(viewport);
+    await expect(page.locator('.student-card')).toHaveCount(viewport.width>1300?4:2);
+    if(await page.evaluate(()=>document.documentElement.scrollHeight>innerHeight))throw Error(`TV vertical overflow at ${viewport.width}x${viewport.height}`);
+    await expect(page.locator('footer')).toBeInViewport();
+  }
+  await page.screenshot({path:'test-results/kiosk-short-tv.png',fullPage:true});
+  await page.setViewportSize({width:1920,height:1080});
   await page.clock.fastForward(15000);await expect(page.locator('.student-card')).toHaveCount(4);
   await page.getByRole('button',{name:'Pausar rotación'}).click();await page.clock.fastForward(15000);
   await expect(page.locator('.student-card')).toHaveCount(4);

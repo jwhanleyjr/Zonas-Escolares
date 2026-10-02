@@ -8,7 +8,10 @@ let page=0,rotating=true,all=false,busy=false;
 const root=document.querySelector<HTMLDivElement>('#kiosk-board')!;
 const connection=document.querySelector<HTMLParagraphElement>('#connection')!;
 const labels={complete:'Terminada',review:'Pendiente de revisión',active:'En progreso',paused:'Pausada',available:'Disponible'};
-function pageSize():number{return innerWidth>1300?8:4;}
+function pageSize():number{
+  const columns=innerWidth>1300?4:innerWidth>650?2:1;
+  return columns*(innerHeight>=900?2:1);
+}
 function render():void{
   if(!data){root.innerHTML='';return;}
   const pages=Math.max(1,Math.ceil(data.students.length/pageSize()));page=Math.min(page,pages-1);
