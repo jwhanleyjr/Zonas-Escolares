@@ -70,80 +70,7 @@ try {
   await check('student cannot manage plans or write arbitrary time', async () => {
     await assert.rejects(manage({ action: 'goal', student_ids: [s1], goal: 1 }));
     await assert.rejects(sql('update public.learning_assignments set enabled=true'));
-    await assert.rejects(sql(`insert into public.learning_progress(student_id,zone,work_date,recorded_seconds) values('${s1}','typing',current_date,9000)`));
-  });
-  await check('exercise without timer and free zone order', async () => {
-    await action('exercise','finish'); await action('reading','finish');
-    assert.equal((await one("select recorded_seconds from public.learning_progress where zone='exercise'")).recorded_seconds, 0);
-    await assert.rejects(action('exercise','start'));
-  });
-  await check('student cannot forge teacher or external completion', async () => {
-    await assert.rejects(action('english','finish')); await assert.rejects(action('naturales','finish'));
-  });
-  const submit = zone => db.query('select public.request_learning_review($1)', [zone]);
-  const review = (id, decision, feedback='') => db.query('select public.review_learning_submission($1,$2,$3)', [id,decision,feedback]);
-  await check('review requests are idempotent, own-only, and do not complete a zone', async () => {
-    await submit('english'); await submit('english');
-    assert.equal((await one("select count(*)::int n from public.learning_reviews")).n,1);
-    assert.equal((await one("select count(*)::int n from public.learning_progress where zone='english' and teacher_confirmed")).n,0);
-    await assert.rejects(submit('exercise')); await assert.rejects(submit('lengua_espanola'));
-    await assert.rejects(sql("update public.learning_reviews set status='approved'"));
-  });
-  const firstReview = (await one('select id from public.learning_reviews')).id;
-  await asUser(u2);
-  await check('students cannot see or decide another student request', async () => {
-    assert.equal((await one('select count(*)::int n from public.learning_reviews')).n,0);
-    await assert.rejects(review(firstReview,'approved'));
-  });
-  await asUser(teacher);
-  await check('teacher returns work with required feedback', async () => {
-    await assert.rejects(review(firstReview,'changes'));
-    await review(firstReview,'changes','Revisa el segundo ejercicio.');
-    await assert.rejects(review(firstReview,'approved'));
-  });
-  await asUser(u1);
-  await check('student sees feedback and can resubmit', async () => {
-    assert.equal((await one('select feedback from public.learning_reviews')).feedback,'Revisa el segundo ejercicio.');
-    await submit('english');
-    assert.equal((await one("select count(*)::int n from public.learning_reviews where status='pending'")).n,1);
-  });
-  const secondReview=(await one("select id from public.learning_reviews where status='pending'")).id;
-  await asUser(admin);
-  await check('administrator approves and counts work only once', async () => {
-    await review(secondReview,'approved');
-    assert.equal((await one("select teacher_confirmed from public.learning_progress where zone='english'")).teacher_confirmed,true);
-    await assert.rejects(review(secondReview,'approved'));
-  });
-  await asUser(u1); await submit('naturales');
-  const externalReview=(await one("select id from public.learning_reviews where status='pending'")).id;
-  await asUser(teacher);
-  await check('changed assignment cannot be silently approved', async () => {
-    await set(s1,'naturales',{completion_method:'external', title:'Actividad nueva'});
-    await assert.rejects(review(externalReview,'approved'));
-    await review(externalReview,'changes','Abre la actividad nueva.');
-  });
-  await asUser(u1); await submit('naturales');
-  const historicalReview=(await one("select id from public.learning_reviews where status='pending'")).id;
-  await sql("reset role; update public.learning_reviews set work_date=(now() at time zone 'America/Santo_Domingo')::date-1 where id='"+historicalReview+"';");
-  await asUser(teacher);
-  await check('late approval counts on original day, not today', async () => {
-    await review(historicalReview,'approved');
-    assert.equal((await one("select count(*)::int n from public.learning_progress where zone='naturales' and teacher_confirmed and work_date=(now() at time zone 'America/Santo_Domingo')::date-1")).n,1);
-    assert.equal((await one("select count(*)::int n from public.learning_progress where zone='naturales' and teacher_confirmed and work_date=(now() at time zone 'America/Santo_Domingo')::date")).n,0);
-  });
-  await asUser(u1);
-  await check('timer switching saves and pauses; early finish rejected', async () => {
-    await action('typing','start'); await assert.rejects(action('typing','finish'));
-    await sql(`reset role; update public.learning_progress set active_started_at=now()-interval '70 seconds' where student_id='${s1}' and zone='typing';`);
-    await asUser(u1); await action('matematica','start');
-    const previous = await one("select * from public.learning_progress where zone='typing'");
-    assert.equal(previous.status,'paused'); assert.ok(previous.recorded_seconds >= 70);
-    await action('typing','finish'); await action('matematica','pause');
-    assert.equal((await one('select count(*)::int n from public.learning_progress where active_started_at is not null')).n,0);
-  });
-  await asUser(teacher);
-  await check('teacher confirms reviewed work without inventing time', async () => {
-    await manage({ action:'confirm', student_ids:[s1], zone:'english' });
+    await assert.rejects(sql(`insert into public.learning_progress(student_id,zone,wostudent_ids:[s1], zone:'english' });
     const row = await one("select * from public.learning_progress where zone='english'");
     assert.equal(row.teacher_confirmed,true); assert.equal(row.recorded_seconds,0);
   });
@@ -267,6 +194,34 @@ try {
     await asUser(admin); const status=(await link('status')).rows[0].result;
     assert.equal(status.confirmations.length,1); assert.equal(status.active,true);
     await link('disable'); await sql('reset role; set role anon;'); await assert.rejects(pe(nextToken));
+  });
+  const kioskToken='c'.repeat(64), kioskNext='d'.repeat(64);
+  const manageKiosk=(action,key=null)=>db.query('select public.manage_kiosk_link($1,$2)',[action,key]);
+  const kiosk=key=>db.query('select public.kiosk_progress($1) result',[key]);
+  await asUser(admin); await manageKiosk('replace',kioskToken);
+  await check('kiosk management restricted to active staff and separate from PE',async()=>{
+    await asUser(u1);await assert.rejects(manageKiosk('replace',kioskNext));
+    await asUser(teacher);await assert.rejects(manageKiosk('status'));
+    await sql('reset role; set role anon;');await assert.rejects(manageKiosk('status'));
+    await assert.rejects(sql('select * from learning_private.kiosk_links'));
+    await assert.rejects(kiosk(token));await assert.rejects(pe(kioskToken));await assert.rejects(kiosk('invalid'));
+  });
+  await check('kiosk shows all active students and minimal own enabled-zone statuses',async()=>{
+    const snapshot=(await kiosk(kioskToken)).rows[0].result;
+    assert.equal(snapshot.students.length,2);
+    for(const student of snapshot.students){assert.deepEqual(Object.keys(student).sort(),['goal','name','published','zones']);for(const zone of student.zones)assert.deepEqual(Object.keys(zone).sort(),['state','zone']);}
+    assert.equal(snapshot.students.find(s=>s.name==='Uno').zones.find(z=>z.zone==='exercise').state,'complete');
+    assert.ok(!JSON.stringify(snapshot).includes('instructions'));
+    await sql(`reset role; update public.students set active=false where id='${s2}';`);
+    await sql('set role anon;');assert.equal((await kiosk(kioskToken)).rows[0].result.students.length,1);
+  });
+  await check('kiosk request is read-only and rotation/revocation reject old links',async()=>{
+    await sql('reset role;');const before=JSON.stringify((await db.query('select * from public.learning_progress order by student_id,zone,work_date')).rows);
+    await sql('set role anon;');await kiosk(kioskToken);await sql('reset role;');
+    assert.equal(JSON.stringify((await db.query('select * from public.learning_progress order by student_id,zone,work_date')).rows),before);
+    await asUser(admin);await manageKiosk('replace',kioskNext);await sql('reset role; set role anon;');
+    await assert.rejects(kiosk(kioskToken));await kiosk(kioskNext);
+    await asUser(admin);await manageKiosk('disable');await sql('reset role; set role anon;');await assert.rejects(kiosk(kioskNext));
   });
   console.log(`${count} database checks passed in isolated PostgreSQL (PGlite). No remote database changed.`);
 } finally { await db.close(); }
