@@ -143,6 +143,8 @@ try {
   await expect(page.getByText('Pendiente de revisión.',{exact:false}).last()).toBeVisible();
   await page.goto(`${origin}/zones`);
   await expect(page.getByText('1 pendientes de revisión')).toBeVisible();
+  await expect(page.locator('.goal-segments .filled')).toHaveCount(1);
+  await expect(page.locator('.goal-segments .pending-review')).toHaveCount(1);
   await expect(page.getByText('Mi meta de hoy: 1 de 5 zonas')).toBeVisible();
   await page.goto(`${origin}/teacher/progress`);
   await page.locator('#progress-student').selectOption(ids[0]);
@@ -173,6 +175,8 @@ try {
   await expect(page.getByText('Terminada por hoy')).toBeVisible();
   await page.goto(`${origin}/zones`);
   await expect(page.getByText('Mi meta de hoy: 2 de 5 zonas')).toBeVisible();
+  await expect(page.locator('.goal-segments .filled')).toHaveCount(2);
+  await expect(page.locator('.goal-segments .pending-review')).toHaveCount(0);
   if (errors.length) throw new Error(errors.join('\n'));
   console.log('Browser checks passed: desktop/tablet/mobile layout, availability, direct disabled URL, exercise, external links, matrix save/error/bulk/search, assignment retry, goals.');
 } finally {

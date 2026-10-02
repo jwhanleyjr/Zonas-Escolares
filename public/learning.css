@@ -23,6 +23,7 @@ button:disabled { opacity: .6; cursor: wait; }
 .goal-segments { display: flex; gap: 4px; min-width: 0; }
 .goal-segments span { flex: 1; height: 23px; border: 1px solid #929aaa; border-radius: 5px; background: #e2e4e7; }
 .goal-segments .filled { background: #a2ce3c; border-color: #527a12; }
+.goal-segments .pending-review { background: #f7cc46; border-color: #896a0c; }
 .board-heading { display: flex; align-items: baseline; gap: 20px; margin: 0 0 16px; }
 .board-heading h2 { font-size: 36px; line-height: 1.1; letter-spacing: -1px; margin: 0; font-weight: 950; }
 .board-heading p { margin: 0; }
