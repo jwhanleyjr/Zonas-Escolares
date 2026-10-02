@@ -3,6 +3,18 @@
   "outputDirectory": "dist",
   "rewrites": [
     {
+      "source": "/kiosk",
+      "destination": "/kiosk.html"
+    },
+    {
+      "source": "/dashboard",
+      "destination": "/kiosk.html"
+    },
+    {
+      "source": "/teacher/settings/kiosk",
+      "destination": "/api/teacher/kiosk"
+    },
+    {
       "source": "/pe",
       "destination": "/pe.html"
     },
@@ -103,6 +115,69 @@
     },
     {
       "source": "/pe.html",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "no-referrer"
+        },
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow"
+        },
+        {
+          "key": "Content-Security-Policy",
+          "value": "default-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"
+        }
+      ]
+    },
+    {
+      "source": "/kiosk",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "no-referrer"
+        },
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow"
+        },
+        {
+          "key": "Content-Security-Policy",
+          "value": "default-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"
+        }
+      ]
+    },
+    {
+      "source": "/kiosk.html",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "no-referrer"
+        },
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow"
+        },
+        {
+          "key": "Content-Security-Policy",
+          "value": "default-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"
+        }
+      ]
+    },
+    {
+      "source": "/dashboard",
       "headers": [
         {
           "key": "Cache-Control",

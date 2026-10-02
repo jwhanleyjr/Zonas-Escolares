@@ -49,3 +49,6 @@ await cp('public/journal.css', 'dist/assets/journal.css');
 
 await cp('public/pe.html', 'dist/pe.html');
 await cp('public/pe.css', 'dist/assets/pe.css');
+
+await cp('public/kiosk.html', 'dist/kiosk.html');
+await cp('public/kiosk.css', 'dist/assets/kiosk.css');
