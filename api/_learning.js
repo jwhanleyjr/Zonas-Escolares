@@ -3,7 +3,7 @@ import { createSupabaseClient, getRequestUrl } from './teacher/_shared.js';
 export const zoneLabels = {
   typing: 'Typing', reading: 'Reading', exercise: 'Exercise', english: 'English',
   lengua_espanola: 'Lengua Española', naturales: 'Naturales', matematica: 'Matemática',
-  ixl_extra_practice: 'IXL Extra Practice', mi_diario: 'Mi Diario',
+  ixl_extra_practice: 'IXL Extra Practice', mi_diario: 'Mi Diario', sociales: 'Sociales',
 };
 export const completionLabels = {
   timed: 'Actividad con tiempo', student: 'El estudiante marca completado',
