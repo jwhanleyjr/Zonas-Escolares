@@ -5,7 +5,7 @@ import {resolve,extname} from 'node:path';
 const expect=baseExpect.configure({timeout:30000});
 const token='e'.repeat(64);
 let revoked=false,offline=false,requests=0;
-const data={date:'2026-10-02',students:Array.from({length:12},(_,i)=>({name:`Estudiante ${String(i+1).padStart(2,'0')}`,goal:3,published:true,zones:[{zone:'reading',state:'complete'},{zone:'english',state:'review'},...['exercise','typing','lengua_espanola','naturales','matematica','ixl_extra_practice','mi_diario'].map(zone=>({zone,state:'available'}))]}))};
+const data={date:'2026-10-02',students:Array.from({length:12},(_,i)=>({name:`Estudiante ${String(i+1).padStart(2,'0')}`,goal:3,published:true,zones:[{zone:'reading',state:'complete'},{zone:'english',state:'review'},...['exercise','typing','lengua_espanola','naturales','matematica','ixl_extra_practice','mi_diario','sociales'].map(zone=>({zone,state:'available'}))]}))};
 const server=createServer(async(req,res)=>{
   try{
     const path=new URL(req.url,'http://localhost').pathname;

@@ -127,3 +127,5 @@ progress::-webkit-progress-value { background: #769c1c; }
 }
 
 .student-progress-panel{padding:20px 0;border-bottom:3px solid #243047;margin-bottom:24px}.student-progress-panel select{display:block;min-height:52px;width:100%;max-width:480px;font-size:1rem}.student-zone-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));gap:16px;margin:20px 0}.student-zone-item{padding:18px;border:2px solid #667085;border-radius:12px;background:#fff;overflow-wrap:anywhere}.student-zone-item.state-complete{border-color:#267244;background:#edf9ef}.student-zone-item.state-review{border-color:#966100;background:#fff7dd}.student-zone-item h3{margin-top:0}.student-zone-item button{min-height:48px}
+
+.zone-sociales { --zone-color: #edc7a3; }
