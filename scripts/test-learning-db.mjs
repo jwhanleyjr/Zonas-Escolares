@@ -70,7 +70,80 @@ try {
   await check('student cannot manage plans or write arbitrary time', async () => {
     await assert.rejects(manage({ action: 'goal', student_ids: [s1], goal: 1 }));
     await assert.rejects(sql('update public.learning_assignments set enabled=true'));
-    await assert.rejects(sql(`insert into public.learning_progress(student_id,zone,wostudent_ids:[s1], zone:'english' });
+    await assert.rejects(sql(`insert into public.learning_progress(student_id,zone,work_date,recorded_seconds) values('${s1}','typing',current_date,9000)`));
+  });
+  await check('exercise without timer and free zone order', async () => {
+    await action('exercise','finish'); await action('reading','finish');
+    assert.equal((await one("select recorded_seconds from public.learning_progress where zone='exercise'")).recorded_seconds, 0);
+    await assert.rejects(action('exercise','start'));
+  });
+  await check('student cannot forge teacher or external completion', async () => {
+    await assert.rejects(action('english','finish')); await assert.rejects(action('naturales','finish'));
+  });
+  const submit = zone => db.query('select public.request_learning_review($1)', [zone]);
+  const review = (id, decision, feedback='') => db.query('select public.review_learning_submission($1,$2,$3)', [id,decision,feedback]);
+  await check('review requests are idempotent, own-only, and do not complete a zone', async () => {
+    await submit('english'); await submit('english');
+    assert.equal((await one("select count(*)::int n from public.learning_reviews")).n,1);
+    assert.equal((await one("select count(*)::int n from public.learning_progress where zone='english' and teacher_confirmed")).n,0);
+    await assert.rejects(submit('exercise')); await assert.rejects(submit('lengua_espanola'));
+    await assert.rejects(sql("update public.learning_reviews set status='approved'"));
+  });
+  const firstReview = (await one('select id from public.learning_reviews')).id;
+  await asUser(u2);
+  await check('students cannot see or decide another student request', async () => {
+    assert.equal((await one('select count(*)::int n from public.learning_reviews')).n,0);
+    await assert.rejects(review(firstReview,'approved'));
+  });
+  await asUser(teacher);
+  await check('teacher returns work with required feedback', async () => {
+    await assert.rejects(review(firstReview,'changes'));
+    await review(firstReview,'changes','Revisa el segundo ejercicio.');
+    await assert.rejects(review(firstReview,'approved'));
+  });
+  await asUser(u1);
+  await check('student sees feedback and can resubmit', async () => {
+    assert.equal((await one('select feedback from public.learning_reviews')).feedback,'Revisa el segundo ejercicio.');
+    await submit('english');
+    assert.equal((await one("select count(*)::int n from public.learning_reviews where status='pending'")).n,1);
+  });
+  const secondReview=(await one("select id from public.learning_reviews where status='pending'")).id;
+  await asUser(admin);
+  await check('administrator approves and counts work only once', async () => {
+    await review(secondReview,'approved');
+    assert.equal((await one("select teacher_confirmed from public.learning_progress where zone='english'")).teacher_confirmed,true);
+    await assert.rejects(review(secondReview,'approved'));
+  });
+  await asUser(u1); await submit('naturales');
+  const externalReview=(await one("select id from public.learning_reviews where status='pending'")).id;
+  await asUser(teacher);
+  await check('changed assignment cannot be silently approved', async () => {
+    await set(s1,'naturales',{completion_method:'external', title:'Actividad nueva'});
+    await assert.rejects(review(externalReview,'approved'));
+    await review(externalReview,'changes','Abre la actividad nueva.');
+  });
+  await asUser(u1); await submit('naturales');
+  const historicalReview=(await one("select id from public.learning_reviews where status='pending'")).id;
+  await sql("reset role; update public.learning_reviews set work_date=(now() at time zone 'America/Santo_Domingo')::date-1 where id='"+historicalReview+"';");
+  await asUser(teacher);
+  await check('late approval counts on original day, not today', async () => {
+    await review(historicalReview,'approved');
+    assert.equal((await one("select count(*)::int n from public.learning_progress where zone='naturales' and teacher_confirmed and work_date=(now() at time zone 'America/Santo_Domingo')::date-1")).n,1);
+    assert.equal((await one("select count(*)::int n from public.learning_progress where zone='naturales' and teacher_confirmed and work_date=(now() at time zone 'America/Santo_Domingo')::date")).n,0);
+  });
+  await asUser(u1);
+  await check('timer switching saves and pauses; early finish rejected', async () => {
+    await action('typing','start'); await assert.rejects(action('typing','finish'));
+    await sql(`reset role; update public.learning_progress set active_started_at=now()-interval '70 seconds' where student_id='${s1}' and zone='typing';`);
+    await asUser(u1); await action('matematica','start');
+    const previous = await one("select * from public.learning_progress where zone='typing'");
+    assert.equal(previous.status,'paused'); assert.ok(previous.recorded_seconds >= 70);
+    await action('typing','finish'); await action('matematica','pause');
+    assert.equal((await one('select count(*)::int n from public.learning_progress where active_started_at is not null')).n,0);
+  });
+  await asUser(teacher);
+  await check('teacher confirms reviewed work without inventing time', async () => {
+    await manage({ action:'confirm', student_ids:[s1], zone:'english' });
     const row = await one("select * from public.learning_progress where zone='english'");
     assert.equal(row.teacher_confirmed,true); assert.equal(row.recorded_seconds,0);
   });
@@ -223,5 +296,52 @@ try {
     await assert.rejects(kiosk(kioskToken));await kiosk(kioskNext);
     await asUser(admin);await manageKiosk('disable');await sql('reset role; set role anon;');await assert.rejects(kiosk(kioskNext));
   });
+  await sql(`reset role; update public.students set active=true where id='${s2}'; delete from public.learning_progress where zone='reading'; delete from public.learning_reviews where zone='reading';`);
+  const readingToken = 'e'.repeat(64), readingNext = 'f'.repeat(64);
+  const reading = (key, ids = [], date = null) => db.query('select public.reading_checklist($1,$2::uuid[],$3::date) result', [key, ids, date]);
+  const readingLink = (action, key = null) => db.query('select public.manage_reading_link($1,$2) result', [action,key]);
+  await asUser(admin);
+  await set(s1,'reading',{ completion_method:'teacher' });
+  await set(s2,'reading',{ completion_method:'timed',target_minutes:5 });
+  await readingLink('replace',readingToken);
+  await check('Reading links require active staff management and protect private tables', async () => {
+    await asUser(u1); await assert.rejects(readingLink('replace',readingNext));
+    await sql('reset role; set role anon;'); await assert.rejects(readingLink('status'));
+    await assert.rejects(sql('select * from learning_private.reading_links'));
+    await assert.rejects(sql('select * from learning_private.reading_attendance'));
+    await assert.rejects(reading('x')); await assert.rejects(reading(readingNext));
+  });
+  let readingDate;
+  await check('Reading capability shows only minimal active enabled non-timed Reading roster', async () => {
+    const result=(await reading(readingToken)).rows[0].result; readingDate=result.date;
+    assert.equal(result.students.length,1); assert.equal(result.students[0].id,s1);
+    assert.deepEqual(Object.keys(result.students[0]).sort(),['confirmed','id','name']);
+    assert.equal(result.students[0].confirmed,false);
+  });
+  await check('Reading confirmation is date checked and rejects inaccessible students atomically', async () => {
+    await assert.rejects(reading(readingToken,[s1],'2000-01-01'));
+    await assert.rejects(reading(readingToken,[s1,s2],readingDate));
+    assert.equal((await reading(readingToken)).rows[0].result.students[0].confirmed,false);
+  });
+  await check('Reading confirmation completes Reading without adding time and resolves its review', async () => {
+    await asUser(u1); await submit('reading');
+    await sql('reset role; set role anon;');
+    await reading(readingToken,[s1],readingDate); await reading(readingToken,[s1,s1],readingDate);
+    assert.equal((await reading(readingToken)).rows[0].result.students[0].confirmed,true);
+    await sql('reset role;');
+    assert.equal((await one('select count(*)::int n from learning_private.reading_attendance')).n,1);
+    const progress=await one(`select * from public.learning_progress where student_id='${s1}' and zone='reading' and work_date=public.current_school_date()`);
+    assert.equal(progress.status,'finished'); assert.equal(progress.teacher_confirmed,true); assert.equal(progress.recorded_seconds,0);
+    assert.equal((await one(`select count(*)::int n from public.learning_reviews where student_id='${s1}' and zone='reading' and status='pending'`)).n,0);
+  });
+  await check('Reading rotation and revocation invalidate old links but preserve confirmations', async () => {
+    await asUser(admin); await readingLink('replace',readingNext);
+    await sql('reset role; set role anon;'); await assert.rejects(reading(readingToken));
+    assert.equal((await reading(readingNext)).rows[0].result.students[0].confirmed,true);
+    await asUser(admin); const status=(await readingLink('status')).rows[0].result;
+    assert.equal(status.confirmations.length,1); assert.equal(status.active,true);
+    await readingLink('disable'); await sql('reset role; set role anon;'); await assert.rejects(reading(readingNext));
+  });
+  await check('Reading and Exercise links cannot be used interchangeably',async()=>{ await sql('reset role; set role anon;'); await assert.rejects(reading(nextToken)); await assert.rejects(pe(readingNext)); });
   console.log(`${count} database checks passed in isolated PostgreSQL (PGlite). No remote database changed.`);
 } finally { await db.close(); }
