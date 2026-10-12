@@ -10,6 +10,21 @@ function getRequestUrl(request) {
   return new URL(request.url ?? '/auth/callback', `${proto}://${host}`);
 }
 
+function getSafeNextPath(requestUrl) {
+  const next = requestUrl.searchParams.get('next');
+  if (!next) return null;
+
+  try {
+    const parsed = new URL(next, requestUrl.origin);
+    if (parsed.origin !== requestUrl.origin) return null;
+    if (parsed.pathname !== '/oauth/consent') return null;
+    if (!parsed.searchParams.get('authorization_id')) return null;
+    return `${parsed.pathname}${parsed.search}`;
+  } catch {
+    return null;
+  }
+}
+
 function parseCookies(cookieHeader) {
   if (!cookieHeader) return [];
 
@@ -83,6 +98,7 @@ function createSupabaseClient(request, response) {
 export default async function handler(request, response) {
   const requestUrl = getRequestUrl(request);
   const code = requestUrl.searchParams.get('code');
+  const safeNextPath = getSafeNextPath(requestUrl);
   const pendingUrl = new URL(accessPendingPath, requestUrl.origin);
 
   if (!code) {
@@ -115,6 +131,11 @@ export default async function handler(request, response) {
 
   if (!profile?.active) {
     redirect(response, pendingUrl);
+    return;
+  }
+
+  if (safeNextPath) {
+    redirect(response, new URL(safeNextPath, requestUrl.origin));
     return;
   }
 
