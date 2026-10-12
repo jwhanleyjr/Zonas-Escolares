@@ -35,6 +35,10 @@
       "destination": "/api/auth/callback"
     },
     {
+      "source": "/oauth/consent",
+      "destination": "/auth/oauth-consent.html"
+    },
+    {
       "source": "/auth/access-pending",
       "destination": "/auth/access-pending.html"
     },
