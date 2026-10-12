@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Autorizar acceso - Zonas Escolares</title>
+    <meta name="theme-color" content="#182231" />
+    <meta name="robots" content="noindex, nofollow" />
+    <link rel="stylesheet" href="/auth/login.css" />
+  </head>
+  <body>
+    <main class="auth-shell" aria-labelledby="consent-title">
+      <section class="intro-panel" aria-label="Autorización">
+        <p class="edition">CONEXIÓN SEGURA</p>
+        <p class="intro-title">Zonas<br /><span>Escolares</span></p>
+        <p class="intro-copy">Revisa la solicitud antes de permitir acceso a tu cuenta.</p>
+        <div class="panel-strip" aria-hidden="true"><span>REVISA ↗</span><span>DECIDE ✦</span><span>CONTINÚA →</span></div>
+        <p class="intro-footer">TÚ CONTROLAS EL ACCESO.</p>
+      </section>
+
+      <section class="auth-card">
+        <p class="hero__label">AUTORIZACIÓN</p>
+        <h1 id="consent-title">Permitir acceso</h1>
+        <p class="auth-card__text" data-consent-summary>
+          Cargando los detalles de la solicitud...
+        </p>
+
+        <div data-consent-details hidden>
+          <p><strong>Aplicación:</strong> <span data-client-name></span></p>
+          <p><strong>Permisos solicitados:</strong> <span data-scopes></span></p>
+        </div>
+
+        <div data-consent-actions hidden>
+          <button class="google-button" type="button" data-consent-approve>Permitir acceso</button>
+          <button class="google-button" type="button" data-consent-deny>Cancelar</button>
+        </div>
+
+        <p class="auth-card__note">
+          Esta autorización no comparte tu contraseña de Google. Puedes cancelar si no reconoces la solicitud.
+        </p>
+        <p class="auth-card__status" data-auth-message role="status" aria-live="polite"></p>
+      </section>
+    </main>
+
+    <script src="/auth/supabase-config.js"></script>
+    <script type="module" src="/auth/oauth-consent.js"></script>
+  </body>
+</html>
